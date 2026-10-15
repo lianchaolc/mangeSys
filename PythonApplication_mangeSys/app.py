@@ -8,7 +8,7 @@ from models import db
 import config
 # 从routes模块导入蓝图对象api_bp，存放所有接口路由
 from routes import api_bp
-
+from page import page_bp   # ← 导入page蓝图，写在这里
 
 def create_app():
    # """
@@ -17,6 +17,10 @@ def create_app():
    # """
     # 实例化Flask应用
     app = Flask(__name__)
+   # 配置数据库连接地址，使用sqlite，数据库文件在instance/crm.db
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/crm.db'
+# 关闭模型修改追踪，避免无用警告和额外性能开销
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # 从config配置类加载项目全部配置
     # 比如：SQLALCHEMY_DATABASE_URI、SECRET_KEY等
@@ -28,7 +32,7 @@ def create_app():
 
     # 注册蓝图，把api下面所有路由交给app管理
     app.register_blueprint(api_bp)
-
+    app.register_blueprint(page_bp)  # 页面路由，不带前缀
     # 返回组装好的app实例
     return app
 

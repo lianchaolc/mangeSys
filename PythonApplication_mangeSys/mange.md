@@ -381,3 +381,171 @@ deactivate
 
 - 需要**单独再创建一个新的虚拟环境**（新的 `venv` / `env`）
 - 新项目自己装 flask、其他包，和这个 mangeSys 的 env 互不干扰
+
+
+
+捌 启动和运行app 的文件
+
+app.py  已经有了为啥还写一次  ”if **name** == '**main**': # debug=True 开启调试模式：代码修改自动重启、报错页面展示详情 app.run (debug=True)“
+
+这个问题问到关键点了，我给你讲清楚**app.py 和 run.py 的分工**：
+
+### 1. app.py 里面现在是什么？
+
+```
+# app.py
+def create_app():
+    app = Flask(__name__)
+    # 加载配置、注册蓝图、初始化db...
+    return app
+```
+
+👉 **app.py 只写【工厂函数 create_app ()】**
+它的作用：定义怎么组装一个 Flask 实例，**它本身不启动服务！**
+它只是一个 “工具函数”，负责造 app，自己不会跑 `app.run()`。
+
+你可以理解：
+`create_app()` = 一个造车的流水线，能造出车子（app 实例），但是流水线本身**不会自己开上路**。
+
+### 2. `if __name__ == '__main__'` 是啥？
+
+这句话的含义：**只有直接运行当前这个 py 文件的时候，才执行里面的代码**。
+
+- 如果你把 `if __name__ == '__main__': app.run()` 写在 app.py 的末尾：
+
+> 
+> 导入模块的时候，模块顶层代码会执行。这就是工厂模式要避开的坑。
+  - 直接 `python app.py`：可以启动项目
+  - 但是！别的文件（init_data.py）`from app import create_app` 的时候，**导入的瞬间就会触发 app.run ()，服务直接跑起来**，这是灾难！
+
+### 3. 为什么单独抽一个 run.py？
+
+**原则：定义 和 启动 分离**
+
+- app.py：只负责【定义怎么创建 app】，给别人导入使用（routes、init_data 都要导入它），**不启动**
+- run.py：专门做【入口】：调用工厂造出 app，然后启动服务
+
+```
+# run.py
+app = create_app() # 调用app.py里面的函数，拿到造好的app
+if __name__ == '__main__':
+    app.run(debug=True)
+```
+
+✅ 好处：
+
+1. 导入 `from app import create_app` 的时候，**不会意外启动 web 服务**（init_data.py、以后写单元测试都会导入 create_app）
+2. 启动入口单独放，以后上线、改启动参数，只碰 run.py，不动核心的 app 工厂代码
+3. 规范：Flask 工厂模式的标准写法，企业里都这么拆分
+
+### 对比两种写法
+
+❌ 不推荐（写在 app.py 末尾）
+
+```
+# app.py
+def create_app():
+    return app
+
+if __name__ == '__main__':
+    app = create_app()
+    app.run()
+```
+
+问题：别的文件 import app.py 的时候，很容易误触发启动。
+
+✅ 推荐（你现在的结构）
+
+- app.py：只有 create_app ()
+- run.py：调用 create_app + app.run ()
+
+### 补充一句话总结
+
+`create_app()` 是**造 app**，`app.run()` 是**启动 app**；
+造 app 的代码放在 app.py；启动的代码单独放到 run.py。
+
+
+玖 调节试图
+
+### ✅ 这个窗口叫【解决方案资源管理器】
+
+两种方式调出来：
+
+1. **快捷键（最快）**：`Ctrl + Alt + L`，一键弹出这个面板Microsoft ...
+2. **顶部菜单**：点击【视图】→【解决方案资源管理器】
+
+### 补充你截图里的细节：
+
+- 顶部搜索框：`搜索解决方案资源管理器(Ctrl+;)`，这个是**在这个窗口里面搜索文件**的快捷键，不是调出窗口的快捷键Microsoft ...
+- 窗口出来之后，可以直接拖到 IDE 左侧或者右侧停靠固定，就是你截图这个样子
+
+### 如果窗口不小心被关闭 / 隐藏了，上面两种方法都能恢复。
+
+调出来之后，你就可以直接在这里右键 → 添加 → 新建项，创建 `run.py`、`init_data.py` 了。
+
+
+
+
+
+拾
+
+### 一句话分清两种双下划线（重点！你代码里的 `__tablename__`、`__init__`、`to_dict`）
+
+1. **前后都双下划线：`__xxx__` （比如 `__tablename__`、`__init__`）👉 这是 Python 内置魔法方法 / 特殊属性，**不是私有 **！
+   - `__init__`：构造函数，实例创建自动执行
+   - `__tablename__`：SQLAlchemy 专门用来指定**数据库里面的表名**，是 ORM 规定的特殊标识
+   ✅ 规则：**前后都带双下划线 = Python 预留魔法名字，不要自己随便起这种名字**
+2. **只有开头双下划线：`__xxx`（前面两个下划线，后面没有）👉 才是 Python 的私有（名称改写 name mangling）**
+
+```
+class A:
+    def __func(self):
+        pass
+```
+
+外面直接 `obj.__func()` 会报错，Python 偷偷改名为 `_A__func`，防止子类名字冲突。
+3. **单下划线开头 `_xxx`**：只是约定，告诉别人 “这是内部用的，别随便调用”，语法上仍然可以直接访问。
+
+---
+
+### 回到你的 Customer 模型
+
+```
+class Customer(db.Model):
+    __tablename__ = "customer"   # ✅ 魔法属性，给SQLAlchemy读，指定表名，不是私有
+    def __init__(self, name, phone, email, address, level="normal_customer"): # ✅ 构造魔法方法
+```
+
+✅ `__tablename__`：SQLAlchemy 识别这个名字，知道这个类映射到数据库里叫 `customer` 的表，**和私有一点关系没有**。
+
+> 
+> 如果你删掉 `__tablename__`，SQLAlchemy 默认会把类名小写作为表名（customer），写上是显式声明，更可控。
+
+
+2026.10.16
+
+h获取json前端传递的值是否为空
+
+name = req.get("name", "").strip()
+# 接着一定要判断空
+if not name:
+    return {"msg": "姓名不能为空"}, 400
+
+
+
+
+    # async /await 详细拆解（结合你这个 addCustomer 代码）
+
+## 1. 核心一句话
+
+`async` 是**标记函数的关键字**：只要函数内部打算写 `await`，这个函数声明前面必须加 `async`。
+
+> 
+> `await` 的作用：**等待异步任务完成，代码停在这里等结果，再往下执行**，最常见就是等待 `fetch` 网络请求。
+
+
+
+
+# `mport re` 是什么
+
+`re` 是 **Python 自带的标准库（正则表达式模块）**，不需要额外 pip 安装，Python 安装完就自带。

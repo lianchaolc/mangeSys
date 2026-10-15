@@ -32,5 +32,12 @@ class Customer(db.Model):
         "level": display_level,
         "create_time": self.create_time.strftime("%Y-%m-%d %H:%M:%S")
     }
-
+ # ========== 【新增：用户表，直接追加在后面，前面代码不用改！】 ==========
+class User(db.Model):
+    __tablename__= "sys_user" # 魔方方法创建对象
+    id=db.Column(db.Integer,primary_key=True,autoincrement=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    real_name = db.Column(db.String(50))
+    password = db.Column(db.String(100))
+    create_time = db.Column(db.DateTime, default=datetime.now)
       

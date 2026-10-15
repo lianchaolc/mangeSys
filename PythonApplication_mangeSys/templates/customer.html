@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>客户管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 24px;
+        }
+        .form-card {
+            background: #fff;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+        .form-card h3 {
+            color: #34495e;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+        .form-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        input {
+            padding: 10px 14px;
+            border: 1px solid #dcdfe6;
+            border-radius: 6px;
+            outline: none;
+            font-size: 14px;
+            width: 200px;
+            transition: border-color 0.2s;
+        }
+        input:focus {
+            border-color: #409eff;
+        }
+        .btn-add {
+            padding: 10px 20px;
+            background-color: #409eff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .btn-add:hover {
+            background-color: #337ecc;
+        }
+        .table-card {
+            background: #fff;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background-color: #f2f6fc;
+            color: #606266;
+            padding: 14px 10px;
+            text-align: left;
+            font-weight: 500;
+        }
+        td {
+            padding: 14px 10px;
+            border-bottom: 1px solid #ebeef5;
+            color: #303133;
+        }
+        tr:hover {
+            background-color: #f5f7fa;
+        }
+        .btn-del {
+            padding: 6px 12px;
+            background-color: #f56c6c;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .btn-del:hover {
+            background-color: #e64545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>客户管理系统</h2>
+        <div class="form-card">
+            <h3>新增客户</h3>
+            <div class="form-row">
+                <input id="name" placeholder="姓名">
+                <input id="phone" placeholder="手机号">
+                <input id="email" placeholder="邮箱">
+                <input id="address" placeholder="地址">
+                <button class="btn-add" onclick="addCustomer()">提交新增</button>
+            </div>
+        </div>
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>姓名</th>
+                        <th>手机号</th>
+                        <th>邮箱</th>
+                        <th>地址</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function loadList(){
+            fetch("/api/customer/list")
+            .then(res=>res.json())
+            .then(ret=>{
+                const arr = ret.data;
+                let html = "";
+                arr.forEach(item=>{
+                    html += `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${item.name}</td>
+                        <td>${item.phone}</td>
+                        <td>${item.email}</td>
+                        <td>${item.address}</td>
+                        <td>${item.create_time}</td>
+                        <td>
+                            <button class="btn-del" onclick="del(${item.id})">删除</button>
+                        </td>
+                    </tr>
+                    `
+                })
+                document.getElementById("tableBody").innerHTML = html;
+            })
+        }
+
+        function addCustomer(){
+            const data = {
+                name:document.getElementById("name").value,
+                phone:document.getElementById("phone").value,
+                email:document.getElementById("email").value,
+                address:document.getElementById("address").value
+            }
+            fetch("/api/customer/add",{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify(data)
+            }).then(res=>res.json()).then(r=>{
+                alert(r.msg);
+              // 只有成功才刷新列表
+        if(r.code === 200){
+            loadList();
+            // 清空输入框
+            document.getElementById("name").value = ""
+            document.getElementById("phone").value = ""
+            document.getElementById("email").value = ""
+            document.getElementById("address").value = ""
+        }
+            })
+        }
+
+        function del(id){
+            if(!confirm("确定删除？")) return;
+            fetch(`/api/customer/${id}`,{method:"DELETE"})
+            .then(res=>res.json())
+            .then(r=>{
+                alert(r.msg);
+                loadList();
+            })
+        }
+        loadList();
+    </script>
+</body>
+</html>

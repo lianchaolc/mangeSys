@@ -24,7 +24,9 @@
   <ItemGroup>
     <Compile Include="app.py" />
     <Compile Include="config.py" />
+    <Compile Include="init_data.py" />
     <Compile Include="models.py" />
+    <Compile Include="page.py" />
     <Compile Include="PythonApplication_mangeSys.py" />
     <Compile Include="routes.py" />
     <Compile Include="utils.py" />
@@ -32,9 +34,11 @@
   <ItemGroup>
     <Content Include="mange.md" />
     <Content Include="requirements.txt" />
+    <Content Include="templates\customer.html" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="instance\" />
+    <Folder Include="mdimage\" />
     <Folder Include="templates\" />
   </ItemGroup>
   <ItemGroup>

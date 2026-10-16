@@ -17,8 +17,16 @@ instance/
 # VS/VSCode配置
 .vs/
 .vscode/
-
+*.vsidx
 # 数据库、日志
 *.db
 *.sqlite3
 *.log
+# VS缓存
+.vs/
+*.sln
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env

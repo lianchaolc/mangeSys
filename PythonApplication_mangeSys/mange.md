@@ -519,6 +519,7 @@ class Customer(db.Model):
 ✅ `__tablename__`：SQLAlchemy 识别这个名字，知道这个类映射到数据库里叫 `customer` 的表，**和私有一点关系没有**。
 
 > 
+<<<<<<< HEAD
 > 如果你删掉 `__tablename__`，SQLAlchemy 默认会把类名小写作为表名（customer），写上是显式声明，更可控。
 
 
@@ -549,3 +550,6 @@ if not name:
 # `mport re` 是什么
 
 `re` 是 **Python 自带的标准库（正则表达式模块）**，不需要额外 pip 安装，Python 安装完就自带。
+=======
+> 如果你删掉 `__tablename__`，SQLAlchemy 默认会把类名小写作为表名（customer），写上是显式声明，更可控。
+>>>>>>> 573ef54d3f8860082f1ca2b1f366f2172afd55c7

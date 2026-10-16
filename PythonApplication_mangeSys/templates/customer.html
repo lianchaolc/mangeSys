@@ -107,11 +107,12 @@
 </head>
 <body>
     <div class="container">
-    <div class="container">
+
         <h2>客户管理系统</h2>
         <div class="form-card">
             <h3>新增客户</h3>
             <div class="form-row">
+
                <!-- 姓名：2~10个字，禁止空 -->
 <input id="name" placeholder="姓名" maxlength="10" required>
 
@@ -126,6 +127,12 @@
 
 <!-- 地址，限制最长60字符 -->
 <input id="address" placeholder="地址" maxlength="60" required>
+
+
+                <input id="name" placeholder="姓名">
+                <input id="phone" placeholder="手机号">
+                <input id="email" placeholder="邮箱">
+                <input id="address" placeholder="地址">
 
                 <button class="btn-add" onclick="addCustomer()">提交新增</button>
             </div>
@@ -150,6 +157,7 @@
     </div>
 
     <script>
+
        
 
   // 全局变量
@@ -218,6 +226,9 @@ async function addCustomer(){
 
 // 页面加载自动刷新列表
 async function loadList(){
+
+        function loadList(){
+
             fetch("/api/customer/list")
             .then(res=>res.json())
             .then(ret=>{
@@ -240,7 +251,36 @@ async function loadList(){
                 })
                 document.getElementById("tableBody").innerHTML = html;
             })
+
 }
+
+
+        }
+
+        function addCustomer(){
+            const data = {
+                name:document.getElementById("name").value,
+                phone:document.getElementById("phone").value,
+                email:document.getElementById("email").value,
+                address:document.getElementById("address").value
+            }
+            fetch("/api/customer/add",{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify(data)
+            }).then(res=>res.json()).then(r=>{
+                alert(r.msg);
+              // 只有成功才刷新列表
+        if(r.code === 200){
+            loadList();
+            // 清空输入框
+            document.getElementById("name").value = ""
+            document.getElementById("phone").value = ""
+            document.getElementById("email").value = ""
+            document.getElementById("address").value = ""
+        }
+            })
+        }
 
 
         function del(id){
@@ -253,7 +293,7 @@ async function loadList(){
             })
         }
         loadList();
+
     </script>}
-    </script>}
-</body>
+
 </html>

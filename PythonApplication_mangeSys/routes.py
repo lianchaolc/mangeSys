@@ -5,7 +5,9 @@ from sqlalchemy.event import api
 from models import Customer
 from models import db
 api_bp = Blueprint("api", __name__, url_prefix="/api")
+
 import re
+
 # 查询客户列表
 #@api_bp.route("/customer/list", methods=["GET"])
 #def customer_list():
@@ -65,7 +67,9 @@ def customer_add():
 
     if not data:
         return jsonify({"code":400, "msg":"Invalid JSON"}), 400
-    exist = Customer.query.filter_by(phone=data["phone"]).first()
+
+    exist = Customer.query.filter_by(phone=req["phone"]).first()
+
     if exist:
         # 提前拦截，返回json，不会触发数据库异常
         return jsonify({"code": 400, "msg": "phone alearly，can add！"})
@@ -91,6 +95,7 @@ def customer_list_page():
         error_out=False
     )
     # pagination.items 是当前页数据
+
     return render_template("customer_list.html", pagination=pagination)
 
 
@@ -104,3 +109,6 @@ def  del_cutomer(cid):
     db.session.delete(customer)
     db.session.commit()
     return jsonify({"msg":"删除成功"}),200
+
+    return render_template("customer_list.html", pagination=pagination)
+

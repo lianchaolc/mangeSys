@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
-
-# ´Óflask¿ò¼Üµ¼ÈëÀ¶Í¼¡¢Ä£°åäÖÈ¾º¯Êı
+# flaské¡µé¢è§†å›¾æ¨¡å—ï¼Œé¡µé¢è·¯ç”±æ¸²æŸ“
 from flask import Blueprint, render_template
-
-
-# ´´½¨Ò»¸öÃû½Ğ page µÄÀ¶Í¼ÊµÀı£¬__name__´ú±íµ±Ç°Ä£¿é£¨page.py£©
-# À¶Í¼ÓÃÀ´Í³Ò»¹ÜÀíÒ³ÃæÏà¹ØÂ·ÓÉ£¬ºÍ½Ó¿ÚÂ·ÓÉapi_bp·Ö¿ª£¬½âñî
+# åˆ›å»ºä¸€ä¸ªåå« page çš„è“å›¾å®ä¾‹ï¼Œ__name__ä»£è¡¨å½“å‰æ¨¡å—ï¼Œä¹Ÿå°±æ˜¯page.py
+# é¡µé¢è·¯ç”±ç»Ÿä¸€æ”¾é¡µé¢è·¯å¾„ï¼Œæ¥å£è·¯å¾„ç»™api_bpåˆ†å¼€ç®¡ç†
 page_bp = Blueprint("page", __name__)
-
-# ¸øÕâ¸öÀ¶Í¼×¢²áÂ·ÓÉ£º·ÃÎÊ /customer »á´¥·¢Õâ¸öº¯Êı
+# æ³¨å†Œé¡µé¢è·¯ç”±ï¼Œè®¿é—® /customer å°±è¿›å…¥è¿™ä¸ªå‡½æ•°
 @page_bp.route("/customer")
 def customer_page():
-    # render_template£º¶ÁÈ¡ templates ÎÄ¼ş¼ĞÀïµÄhtmlÎÄ¼ş²¢·µ»Ø¸øä¯ÀÀÆ÷
-    # templatesÊÇFlaskÄ¬ÈÏ¹Ì¶¨µÄÄ£°åÎÄ¼ş¼ĞÃû³Æ£¬²»ÓÃ¶îÍâÅäÖÃÂ·¾¶
+    # render_templateè¯»å–templatesæ–‡ä»¶å¤¹ä¸‹htmlæ–‡ä»¶ï¼Œè¿”å›é¡µé¢
+    # templatesæ˜¯Flaské»˜è®¤æ¨¡æ¿æ–‡ä»¶å¤¹ï¼Œä¸ç”¨é¢å¤–å†™è·¯å¾„
     return render_template("customer.html")

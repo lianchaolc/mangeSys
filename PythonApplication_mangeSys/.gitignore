@@ -30,3 +30,14 @@ __pycache__/
 *.pyo
 *.pyd
 .env
+# Visual Studio
+.vs/
+*.sln
+*.suo
+*.user
+*.vcxproj*
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env

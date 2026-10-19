@@ -553,3 +553,98 @@ if not name:
 =======
 > 如果你删掉 `__tablename__`，SQLAlchemy 默认会把类名小写作为表名（customer），写上是显式声明，更可控。
 >>>>>>> 573ef54d3f8860082f1ca2b1f366f2172afd55c7
+
+
+
+
+2026.10.17
+
+
+壹
+python app.py 2>&1
+它会打印 `File "xxx.py", line xx`，一眼看到是哪个源码文件炸了
+
+
+
+贰 区别
+
+# 一句话结论
+
+**完全不是一个东西，差别巨大！`from venv import logging` 是错误写法，绝大多数情况直接报错，就算侥幸不报错，也不是你想要的日志库。**
+
+## 1. `import logging`（✅ 正确，你要用的）
+
+导入的是 Python **标准库 logging**，也就是内置日志模块：
+
+- 路径：`python安装目录/Lib/logging.py`
+- 用途：打日志、`logging.error()`、`logging.basicConfig()` 都是它
+- 所有教程写日志，都是导入这个
+
+## 2. `from venv import logging`（❌ 错误写法）
+
+`venv` 是 Python 自带**虚拟环境管理模块**（用来创建虚拟环境的）
+
+```
+import venv
+print(dir(venv))
+```
+
+**venv 模块里面根本没有叫 logging 的成员！**
+正常情况下执行这一行直接抛：
+
+```
+ImportError: cannot import name 'logging' from 'venv'
+```
+
+> 
+> 你之前居然是报编码错而不是导入错，说明：
+> 你的代码文件本身编码坏了（GBK 保存、声明 utf-8），**Python 在读源码阶段就炸了，还没走到执行这行 import**。
+
+## 为什么你会写出 `from venv import logging`？猜测
+
+大概率手滑：
+
+- 看到项目有 `venv` 文件夹（虚拟环境目录），误以为 `venv` 里面放 logging；
+- 或者复制代码的时候不小心敲错。
+
+⚠️ 重点：**`venv` 文件夹（虚拟环境） ≠ `venv` 标准库模块**
+虚拟环境文件夹只是一个目录，不能用 `from venv import xxx` 去导入里面的包；
+虚拟环境的作用只是让 `python` 找包的时候优先去这个文件夹下找，导入写法依然是正常 `import xxx`。
+
+## 简单对比表
+
+表格
+
+| 写法 | 导入来源 | 是否正确 |
+| --- | --- | --- |
+| `import logging` | Python 标准库 logging 日志模块 | ✅ 正确 |
+| `from venv import logging` | 从 venv 虚拟环境模块导入 logging | ❌ 不存在，会导入失败 |
+
+
+
+叁
+
+这两个东西是两码事，一定要分清：
+
+1. **`venv` 虚拟环境 = 文件夹（你的项目里那个 venv 目录）**
+它的作用：隔离 Python 包（flask、sqlalchemy 这些装在这里），**靠的是你 PS 里激活虚拟环境、用 venv 里面的 python.exe 运行代码**，不靠代码里写 `from venv`。
+2. **`from venv` 这一行 = Python 代码导入语句**
+这行代码只是源码里的一句语法，和外面那个 venv 文件夹没有绑定关系，删掉它**不会删掉、不会失效你的虚拟环境**
+
+
+
+
+
+
+
+2026.10,19
+
+壹 首行缩进 到 def  errr  xx  缩进到 errr
+贰        清缓存 PS D:\pythson\pro\PythonApplication_mangeSys\PythonApplication_mangeSys> Remove-Item -Recurse -Force __pycache__ 
+
+
+
+
+
+访问urljson
+http://127.0.0.1:5000/api/customer/list

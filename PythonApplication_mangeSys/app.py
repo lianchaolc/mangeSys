@@ -1,56 +1,155 @@
 # -*- coding: utf-8 -*-
-
-# µ¼ÈëFlaskºËĞÄÀà
+# å¯¼å…¥Flaskæ ¸å¿ƒç±»
+import logging
 from flask import Flask
-# ´ÓmodelsÄ£¿éµ¼ÈësqlalchemyµÄdb¶ÔÏó£¨Êı¾İ¿âÊµÀı£©
+# ä»modelsæ¨¡å—å¯¼å…¥sqlalchemyçš„dbå¯¹è±¡ï¼ˆæ•°æ®åº“å®ä¾‹ï¼‰
 from models import db
-# µ¼ÈëÅäÖÃÎÄ¼ş£¨ÀïÃæ·ÅÊı¾İ¿âµØÖ·¡¢ÃÜÔ¿µÈÅäÖÃ£©
+# å¯¼å…¥é…ç½®æ–‡ä»¶ï¼ˆé‡Œé¢æ”¾æ•°æ®åº“åœ°å€ã€å¯†é’¥ç­‰é…ç½®ï¼‰
 import config
-# ´ÓroutesÄ£¿éµ¼ÈëÀ¶Í¼¶ÔÏóapi_bp£¬´æ·ÅËùÓĞ½Ó¿ÚÂ·ÓÉ
+# ä»routesæ¨¡å—å¯¼å…¥è“å›¾å¯¹è±¡api_bpï¼Œå­˜æ”¾æ‰€æœ‰æ¥å£è·¯ç”±
 from routes import api_bp
-from page import page_bp   # ¡û µ¼ÈëpageÀ¶Í¼£¬Ğ´ÔÚÕâÀï
+from page import page_bp   # â† å¯¼å…¥pageè“å›¾ï¼Œå†™åœ¨è¿™é‡Œ
+import traceback
+from flask import Flask, jsonify
+# ä»modelsæ¨¡å—å¯¼å…¥sqlalchemyçš„dbå¯¹è±¡ï¼ˆæ•°æ®åº“å®ä¾‹ï¼‰
+from models import db
+# å¯¼å…¥é…ç½®æ–‡ä»¶ï¼ˆé‡Œé¢æ”¾æ•°æ®åº“åœ°å€ã€å¯†é’¥ç­‰é…ç½®ï¼‰
+import config
+# ä»routesæ¨¡å—å¯¼å…¥è“å›¾å¯¹è±¡api_bpï¼Œå­˜æ”¾æ‰€æœ‰æ¥å£è·¯ç”±
+from routes import api_bp
+from page import page_bp   # â† å¯¼å…¥pageè“å›¾ï¼Œå†™åœ¨è¿™é‡Œ
+# werkzeug é‡Œé¢çš„è¯·æ±‚å¼‚å¸¸ï¼Œç”¨æ¥æ•è·400/401/403/405
+from werkzeug.exceptions import BadRequest, Unauthorized, Forbidden, MethodNotAllowed
+import logging
+#`after_request_func` é‡Œé¢ç”¨åˆ°äº† `request`ï¼Œä½†æ˜¯**æ²¡æœ‰å¯¼å…¥ request**ã€‚
+from flask import request
+#é…ç½®ç®€å•æ—¥å¿—(ç”Ÿäº§ç¯å¢ƒç”¨æ–‡ä»¶æ—¥å¿—)
+logging.basicConfig(level=logging.ERROR)
 
 def create_app():
    # """
-   # Ó¦ÓÃ¹¤³§º¯Êı£¨Flask±ê×¼Ğ´·¨£©
-  #  ºÃ´¦£º¿ÉÒÔ¶à´Î´´½¨appÊµÀı¡¢·½±ãµ¥Ôª²âÊÔ¡¢½âñî
+   # åº”ç”¨å·¥å‚å‡½æ•°ï¼ˆFlaskæ ‡å‡†å†™æ³•ï¼‰
+  #  å¥½å¤„ï¼šå¯ä»¥å¤šæ¬¡åˆ›å»ºappå®ä¾‹ã€æ–¹ä¾¿å•å…ƒæµ‹è¯•ã€è§£è€¦
    # """
-    # ÊµÀı»¯FlaskÓ¦ÓÃ
+    # å®ä¾‹åŒ–Flaskåº”ç”¨
     app = Flask(__name__)
-   # ÅäÖÃÊı¾İ¿âÁ¬½ÓµØÖ·£¬Ê¹ÓÃsqlite£¬Êı¾İ¿âÎÄ¼şÔÚinstance/crm.db
+   # é…ç½®æ•°æ®åº“è¿æ¥åœ°å€ï¼Œä½¿ç”¨sqliteï¼Œæ•°æ®åº“æ–‡ä»¶åœ¨instance/crm.db
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/crm.db'
-# ¹Ø±ÕÄ£ĞÍĞŞ¸Ä×·×Ù£¬±ÜÃâÎŞÓÃ¾¯¸æºÍ¶îÍâĞÔÄÜ¿ªÏú
+# å…³é—­æ¨¡å‹ä¿®æ”¹è¿½è¸ªï¼Œé¿å…æ— ç”¨è­¦å‘Šå’Œé¢å¤–æ€§èƒ½å¼€é”€
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # ´ÓconfigÅäÖÃÀà¼ÓÔØÏîÄ¿È«²¿ÅäÖÃ
-    # ±ÈÈç£ºSQLALCHEMY_DATABASE_URI¡¢SECRET_KEYµÈ
+    # ä»configé…ç½®ç±»åŠ è½½é¡¹ç›®å…¨éƒ¨é…ç½®
+    # æ¯”å¦‚ï¼šSQLALCHEMY_DATABASE_URIã€SECRET_KEYç­‰
     app.config.from_object(config)
 
-    # ½«dbÊı¾İ¿âÊµÀı°ó¶¨µ½µ±Ç°flask app
-    # ÔçÆÚĞ´·¨¿ÉÒÔÖ±½Ódb = SQLAlchemy(app)£¬¹¤³§Ä£Ê½ÏÂÓÃinit_appÑÓ³Ù³õÊ¼»¯
+    # å°†dbæ•°æ®åº“å®ä¾‹ç»‘å®šåˆ°å½“å‰flask app
+    # æ—©æœŸå†™æ³•å¯ä»¥ç›´æ¥db = SQLAlchemy(app)ï¼Œå·¥å‚æ¨¡å¼ä¸‹ç”¨init_appå»¶è¿Ÿåˆå§‹åŒ–
     db.init_app(app)
 
-    # ×¢²áÀ¶Í¼£¬°ÑapiÏÂÃæËùÓĞÂ·ÓÉ½»¸øapp¹ÜÀí
+    # æ³¨å†Œè“å›¾ï¼ŒæŠŠapiä¸‹é¢æ‰€æœ‰è·¯ç”±äº¤ç»™appç®¡ç†
     app.register_blueprint(api_bp)
-    app.register_blueprint(page_bp)  # Ò³ÃæÂ·ÓÉ£¬²»´øÇ°×º
-    # ·µ»Ø×é×°ºÃµÄappÊµÀı
+    app.register_blueprint(page_bp)  # é¡µé¢è·¯ç”±ï¼Œä¸å¸¦å‰ç¼€
+    # è¿”å›ç»„è£…å¥½çš„appå®ä¾‹
+    
+# 404çŠ¶æ€ç å¤„ç†å™¨ï¼šè®¿é—®ä¸å­˜åœ¨çš„è·¯ç”±/æ¥å£æ—¶è§¦å‘
+# å±äºHTTPçŠ¶æ€æ•è·ï¼Œä¸æ˜¯ä»£ç æŠ›å‡ºçš„Exceptionå¼‚å¸¸ï¼Œå’Œä¸Šé¢å…¨å±€å…œåº•æ˜¯ä¸¤å¥—ç‹¬ç«‹é€»è¾‘
+    @app.errorhandler(404)
+    def not_found(e):
+    # æ¥å£ä¸å­˜åœ¨ï¼Œä¸éœ€è¦æ“ä½œæ•°æ®åº“ï¼Œä¸ç”¨rollback
+        return jsonify({
+        "code":404,
+        "msg":"not find servces",
+        "data":None
+        }),404
+
+
+    # 400 è¯·æ±‚å‚æ•°é”™è¯¯
+    @app.errorhandler(BadRequest)
+    def bad_request_handler(e):
+        return jsonify({
+        "code":400,
+        "msg":"Invalid request parameters (request error)",
+        "data":None
+      }),400
+
+
+  
+    # UnicodeDecodeError æ–‡ä»¶ç¼–ç æŠ¥é”™ï¼ˆä½ å½“å‰è¦è§£å†³çš„ï¼‰
+    @app.errorhandler(UnicodeDecodeError)
+    def unicode_decode_err_handler(e):
+        err_stack = traceback.format_exc()
+        logging.error(f"ã€ç¼–ç è§£ç å¤±è´¥ã€‘position={e.start}, raw_bytes={e.object[:20].hex()}\n{err_stack}")
+        db.session.rollback()
+        return jsonify({
+            "code": 400,
+            "msg": "æ–‡ä»¶ç¼–ç é”™è¯¯ï¼Œè¯·ä½¿ç”¨UTF-8/GB18030æ–‡ä»¶",
+            "data": None
+        }), 400
+      
+
+    @app.errorhandler(Exception)
+    def global_exception_handler(e):
+    # å‘ç”Ÿå¼‚å¸¸ï¼Œå›æ»šæ•°æ®åº“ä¼šè¯ï¼Œé˜²æ­¢åç»­æ•°æ®åº“æ“ä½œå¡ä½
+        db.session.rollback()
+    # æ‰“å°å¼‚å¸¸ä¿¡æ¯ï¼Œæ–¹ä¾¿å¼€å‘æ—¶æ’æŸ¥é—®é¢˜ï¼Œç”Ÿäº§ç¯å¢ƒå»ºè®®æ›¿æ¢ä¸ºloggingæ—¥å¿—
+        print(f"error: {e}")
+    # è¿”å›ç»Ÿä¸€JSONå“åº”ï¼Œå‰ç«¯å›ºå®šè§£æcode/msg/dataï¼Œä¸æŠŠåŸå§‹æŠ¥é”™ä¿¡æ¯æš´éœ²ç»™ç”¨æˆ·
+        return jsonify({
+        "code": 500,
+        "msg": "servces error",
+        "data": None
+         }), 500
+
+    @app.after_request
+    def after_request_func(response):
+        #æ‰“å°è¯·æ±‚è·¯å¾„ï¼Œæ‰“å°æ–¹æ³•
+         print(f"requestè¯·æ±‚:{request.method} {request.path}")
+         # ç¤ºä¾‹ï¼šè·å–token
+        # token = request.headers.get("Authorization")
+        # if not token:
+        #     return jsonify({"code":401,"msg":"æœªç™»å½•","data":None}),401
+         print(f"requestè¯·æ±‚:{request.method} {request.path}")
+         response.headers["Access-Control-Allow-Origin"] = "*"
+         response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
+         response.headers["Access-Control-Allow-Headers"] = "*"
+    # å¿…é¡»è¿”å› responseï¼ï¼
+         return response
+     #from werkzeug.exceptions import MethodNotAllowed
+
+    #@app.errorhandler(MethodNotAllowed)
+    #def handle_405(e):
+   #     return jsonify({
+     #       "code":405,
+    #        "msg":"è¯·æ±‚æ–¹æ³•ä¸å…è®¸",
+     #       "data":None
+     #   }),405
+
+
+
+
+
+
+
     return app
-
-
-# µ÷ÓÃ¹¤³§º¯Êı£¬´´½¨appÊµÀı
+# è°ƒç”¨å·¥å‚å‡½æ•°ï¼Œåˆ›å»ºappå®ä¾‹
 app = create_app()
+#å…¨å±€å¼‚å¸¸å¤„ç†# å…¨å±€å…œåº•å¼‚å¸¸å¤„ç†å™¨ï¼šæ•è·æ‰€æœ‰æ²¡æœ‰å•ç‹¬å¤„ç†çš„æœªçŸ¥å¼‚å¸¸ï¼ˆä»£ç bugã€æ•°æ®åº“æ„å¤–æŠ¥é”™ç­‰ï¼‰
+# ä½œç”¨ï¼šé˜²æ­¢Flaskè¿”å›é»˜è®¤HTMLæŠ¥é”™é¡µé¢ï¼Œç»Ÿä¸€è¿”å›JSONæ ¼å¼ï¼›æ•°æ®åº“å¼‚å¸¸æ—¶å›æ»šä¼šè¯ï¼Œé¿å…ä¼šè¯é”æ­»
+
+
 
 
 if __name__ == "__main__":
-    # app.app_context()£ºFlaskÓ¦ÓÃÉÏÏÂÎÄ
-    # Êı¾İ¿â²Ù×÷£¨create_all¡¢²éÑ¯£©±ØĞëÔÚÉÏÏÂÎÄÀïÃæÖ´ĞĞ£¬·ñÔò±¨´í
+    # app.app_context()ï¼šFlaskåº”ç”¨ä¸Šä¸‹æ–‡
+    # æ•°æ®åº“æ“ä½œï¼ˆcreate_allã€æŸ¥è¯¢ï¼‰å¿…é¡»åœ¨ä¸Šä¸‹æ–‡é‡Œé¢æ‰§è¡Œï¼Œå¦åˆ™æŠ¥é”™
     with app.app_context():
-        # ¸ù¾İmodelsÀïÃæ¶¨ÒåµÄÊı¾İ¿âÄ£ĞÍ£¬×Ô¶¯´´½¨Êı¾İ±í£¨²»´æÔÚ²Å´´½¨£¬²»»á¸²¸ÇÒÑÓĞ±í£©
+        # æ ¹æ®modelsé‡Œé¢å®šä¹‰çš„æ•°æ®åº“æ¨¡å‹ï¼Œè‡ªåŠ¨åˆ›å»ºæ•°æ®è¡¨ï¼ˆä¸å­˜åœ¨æ‰åˆ›å»ºï¼Œä¸ä¼šè¦†ç›–å·²æœ‰è¡¨ï¼‰
         db.create_all()
 
-    # Æô¶¯ÄÚÖÃ¿ª·¢·şÎñÆ÷
-    # debug=True£º¿ª·¢Ä£Ê½£¬´úÂë¸Ä¶¯×Ô¶¯ÖØÆô¡¢Ò³ÃæÏÔÊ¾±¨´íÏêÇé£»ÏßÉÏÒ»¶¨Òª¹Øµôdebug
+    # å¯åŠ¨å†…ç½®å¼€å‘æœåŠ¡å™¨
+    # debug=Trueï¼šå¼€å‘æ¨¡å¼ï¼Œä»£ç æ”¹åŠ¨è‡ªåŠ¨é‡å¯ã€é¡µé¢æ˜¾ç¤ºæŠ¥é”™è¯¦æƒ…ï¼›çº¿ä¸Šä¸€å®šè¦å…³æ‰debug
     app.run(debug=True)
+
 
 
 

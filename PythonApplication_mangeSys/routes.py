@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy.event import api
 from models import Customer
 from models import db
+from flask import Blueprint, jsonify, request, render_template
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 import re

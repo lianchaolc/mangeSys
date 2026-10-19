@@ -648,3 +648,84 @@ ImportError: cannot import name 'logging' from 'venv'
 
 访问urljson
 http://127.0.0.1:5000/api/customer/list
+
+访问网页url
+http://127.0.0.1:5000/customer
+
+
+
+写页面
+## 1、新建文件 `templates/layout.html`
+
+`templates` 是 Flask**固定名字的模板文件夹**，Flask 会自动在这里找 html 页面，名字不能改。
+
+`layout.html` 叫做**母版 / 基版**，作用：把整套系统公用的页面框架只写一遍
+
+- 顶部：系统一级导航栏（首页看板、客户库存管理、款箱管理…）
+- 左侧：可折叠侧边二级菜单（工作台、系统管理、库存业务）
+- 右侧：留出一块空白区域 `{% block content %}{% endblock %}`
+
+
+
+
+
+
+
+# 这个全局异常处理器利弊说明
+
+> 
+> 开发阶段：**坑！它把 Flask debug 的红色堆栈完全吞掉，浏览器看不到真实错误，终端仅仅 print 一行简略信息，调试模板 500 极其痛苦**。
+> 生产阶段才用：防止把 Python 异常堆栈泄露给前端浏览器，统一返回 JSON 格式。
+
+## ✅ 改良方案：开发 / 生产两套行为，不用完全删掉
+
+不用注释整个处理器，做判断：
+
+- **debug=True（开发调试）：不接管异常，交给 Flask 原生，浏览器显示完整红色报错栈**
+- **debug=False（线上生产）：才返回统一 json，并且执行 db 回滚**
+
+```
+@app.errorhandler(Exception)
+def global_exception_handler(e):
+    db.session.rollback()
+    print(f"【全局异常】error: {e}")
+
+    # 开发模式，直接抛出异常，让flask显示debug报错页面
+    if app.debug:
+        raise e
+
+    # 只有生产环境才返回json格式错误
+    return jsonify({
+        "code": 500,
+        "msg": "service error",
+        "data": None
+    }), 500
+```
+
+> 
+> 修复了你原来拼写错误 `servces` → `service`
+
+
+
+
+
+2026.12.20
+
+Layui 2.x 标准结构是：
+
+```
+<div class="layui-layout layui-layout-admin">
+  <!-- header -->
+  <div class="layui-header">...</div>
+  <!-- side -->
+  <div class="layui-side layui-bg-black">...</div>
+  <!-- 遮罩（小屏菜单） -->
+  <div class="layui-body-shade"></div>
+  <!-- main -->
+  <div class="layui-body">
+    {% block content %}{% endblock %}
+  </div>
+  <!-- 底部（可选，版本、版权） -->
+  <div class="layui-footer">© 2026 现金押运管理系统</div>
+</div>
+```

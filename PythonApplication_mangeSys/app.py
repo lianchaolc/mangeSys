@@ -25,7 +25,9 @@ import logging
 from flask import request
 #配置简单日志(生产环境用文件日志)
 logging.basicConfig(level=logging.ERROR)
-
+# api_bp 在你的api文件中
+from routes import api_bp
+from modules.business import bp as business_bp
 def create_app():
    # """
    # 应用工厂函数（Flask标准写法）
@@ -50,7 +52,8 @@ def create_app():
     app.register_blueprint(api_bp)
     app.register_blueprint(page_bp)  # 页面路由，不带前缀
     # 返回组装好的app实例
-    
+    #modle 类
+    app.register_blueprint(business_bp)
 # 404状态码处理器：访问不存在的路由/接口时触发
 # 属于HTTP状态捕获，不是代码抛出的Exception异常，和上面全局兜底是两套独立逻辑
     @app.errorhandler(404)
@@ -87,18 +90,18 @@ def create_app():
         }), 400
       
 
-    @app.errorhandler(Exception)
-    def global_exception_handler(e):
+    # @app.errorhandler(Exception)
+    # def global_exception_handler(e):
     # 发生异常，回滚数据库会话，防止后续数据库操作卡住
-        db.session.rollback()
+     #    db.session.rollback()
     # 打印异常信息，方便开发时排查问题，生产环境建议替换为logging日志
-        print(f"error: {e}")
+     #    print(f"error: {e}")
     # 返回统一JSON响应，前端固定解析code/msg/data，不把原始报错信息暴露给用户
-        return jsonify({
-        "code": 500,
-        "msg": "servces error",
-        "data": None
-         }), 500
+     #    return jsonify({
+     #    "code": 500,
+     #    "msg": "servces error",
+    #     "data": None
+      #    }), 500
 
     @app.after_request
     def after_request_func(response):

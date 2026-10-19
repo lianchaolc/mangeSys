@@ -5,8 +5,10 @@ from sqlalchemy.event import api
 from models import Customer
 from models import db
 from flask import Blueprint, jsonify, request, render_template
+from flask import Flask, render_template, jsonify
 api_bp = Blueprint("api", __name__, url_prefix="/api")
-
+# 1. 【重点】先创建app实例，不然会报app未定义
+app = Flask(__name__)
 import re
 
 # 查询客户列表
@@ -113,3 +115,57 @@ def  del_cutomer(cid):
 
     return render_template("customer_list.html", pagination=pagination)
 
+from flask import jsonify
+
+# ========== 【新增：仪表盘看板接口，单独加在下面】 ==========
+# ✅ 页面路由（主app，无/api，访问 /dashboard 打开网页）
+#@app.route("/dashboard")
+#def dashboard_page():
+#    return render_template("dashboard.html")
+
+# ✅ 统计接口路由（放在 api_bp 蓝图里，自动带 /api 前缀，地址：/api/dashboard/stats）
+#@api_bp.route("/dashboard/stats")
+#def dashboard_stats():
+ #   mock_data = {
+##        "totalStock": 128,
+ #       "todayIn": 45,
+  #      "todayOut": 32,
+ #       "todoTask": 7,
+ #       "trend": {
+ #           "xdata": ["周一","周二","周三","周四","周五"],
+ #           "ydata": [12, 22, 18, 28, 25]
+  #      },
+#        "pieData": [
+#            {"name":"A网点","value":40},
+#            {"name":"B网点","value":30},
+#            {"name":"C网点","value":20},
+#            {"name":"其他","value":10}
+ #       ]
+ #   }
+#    return {"code":0, "data": mock_data, "msg":"ok"}
+
+# ✅页面路由（主app，负责渲染html）
+@app.route("/dashboard")
+def dashboard_page():
+    return render_template("dashboard.html")
+
+# ✅接口路由（蓝图，只负责json，地址 /api/dashboard/stats）
+@api_bp.route("/dashboard/stats")
+def dashboard_stats():
+    mock_data = {
+        "totalStock": 128,
+        "todayIn": 45,
+        "todayOut": 32,
+        "todoTask": 7,
+        "trend": {
+            "xdata": ["周一","周二","周三","周四","周五"],
+            "ydata": [12, 22, 18, 28, 25]
+        },
+        "pieData": [
+            {"name":"A网点","value":40},
+            {"name":"B网点","value":30},
+            {"name":"C网点","value":20},
+            {"name":"其他","value":10}
+        ]
+    }
+    return {"code":0, "data": mock_data, "msg":"ok"}

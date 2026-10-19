@@ -10,7 +10,7 @@ class Customer(db.Model):
     phone = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(50))
     address = db.Column(db.String(100))
-    # ÕâÀïÎÒÔİÊ±²»ÓÃÖĞÎÄ£¬Ö±½ÓĞ´Ó¢ÎÄ£¬ÈÆ¿ªWindowsÕ³ÌùÖĞÎÄ±àÂëÔÖÄÑ
+    # è¿™é‡Œæˆ‘æš‚æ—¶ä¸ç”¨ä¸­æ–‡ï¼Œç›´æ¥å†™è‹±æ–‡ï¼Œç»•å¼€Windowsç²˜è´´ä¸­æ–‡ç¼–ç ç¾éš¾
     level = db.Column(db.String(20), default="normal_customer")
     create_time = db.Column(db.DateTime, default=datetime.now)
 
@@ -32,9 +32,9 @@ class Customer(db.Model):
         "level": display_level,
         "create_time": self.create_time.strftime("%Y-%m-%d %H:%M:%S")
     }
- # ========== ¡¾ĞÂÔö£ºÓÃ»§±í£¬Ö±½Ó×·¼ÓÔÚºóÃæ£¬Ç°Ãæ´úÂë²»ÓÃ¸Ä£¡¡¿ ==========
+ # ========== ã€æ–°å¢ï¼šç”¨æˆ·è¡¨ï¼Œç›´æ¥è¿½åŠ åœ¨åé¢ï¼Œå‰é¢ä»£ç ä¸ç”¨æ”¹ï¼ã€‘ ==========
 class User(db.Model):
-    __tablename__= "sys_user" # Ä§·½·½·¨´´½¨¶ÔÏó
+    __tablename__= "sys_user" # é­”æ–¹æ–¹æ³•åˆ›å»ºå¯¹è±¡
     id=db.Column(db.Integer,primary_key=True,autoincrement=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     real_name = db.Column(db.String(50))

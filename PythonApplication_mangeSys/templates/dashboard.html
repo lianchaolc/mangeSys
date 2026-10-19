@@ -1,0 +1,107 @@
+
+<div class="layui-card" style="margin:10px 10px 0;">
+  <div class="layui-card-body" style="padding:8px 15px;">
+    <span class="layui-breadcrumb" lay-separator=">">
+      {% for item in breadcrumb_list %}
+        {% if item.url %}
+            <a href="{{ item.url }}">{{ item.title }}</a>
+        {% else %}
+            <a><cite>{{ item.title }}</cite></a>
+        {% endif %}
+      {% endfor %}
+    </span>
+  </div>
+</div>
+
+{% extends "layout.html" %}
+{% block content %}
+
+
+<div class="layui-row layui-col-space15 layui-mt15">
+    <div class="layui-col-md3">
+        <div class="layui-card">
+            <div class="layui-card-header">Total Pledged Collateral In Stock</div>
+            <div class="layui-card-body" style="font-size:24px;color:#1E9FFF">28</div>
+        </div>
+    </div>
+    <div class="layui-col-md3">
+        <div class="layui-card">
+            <div class="layui-card-header">Today Inbound Orders</div>
+            <div class="layui-card-body" style="font-size:24px;color:#1E9FFF">45</div>
+        </div>
+    </div>
+    <div class="layui-col-md3">
+        <div class="layui-card">
+            <div class="layui-card-header">Today Outbound Orders</div>
+            <div class="layui-card-body" style="font-size:24px;color:#1E9FFF">82</div>
+        </div>
+    </div>
+    <div class="layui-col-md3">
+        <div class="layui-card">
+            <div class="layui-card-header">Pending Tasks</div>
+            <div class="layui-card-body" style="font-size:24px;color:#1E9FFF">7</div>
+        </div>
+    </div>
+</div>
+
+<!-- 下面放图表行 -->
+<div class="layui-row layui-col-space15 layui-mt15">
+    <div class="layui-col-md12">
+        <div class="layui-card">
+            <div class="layui-card-header">Business Trend Chart</div>
+            <div class="layui-card-body">
+                <div id="chart" style="width:100%;height:400px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="layui-row layui-mt15">
+    <div class="layui-col layui-col6">
+        <div class="layui-card">
+            <div class="layui-card-header">Business Trend Chart</div>
+            <div class="layui-card-body">
+                <div id="chartTrend" style="height:320px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="layui-col layui-col6">
+        <div class="layui-card">
+            <div class="layui-card-header">Branch Business Distribution</div>
+            <div class="layui-card-body">
+                <div id="chartPie" style="height:320px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+layui.use(['jquery'],function(){
+    var $ = layui.jquery;
+    $.getJSON("/api/dashboard/stats",function(res){
+        if(res.code === 0){
+            $("#totalStock").text(res.data.totalStock);
+            $("#todayIn").text(res.data.todayIn);
+            $("#todayOut").text(res.data.todayOut);
+            $("#todoTask").text(res.data.todoTask);
+
+            var chartTrend = echarts.init(document.getElementById("chartTrend"));
+            chartTrend.setOption({
+                xAxis:{type:'category',data:res.data.trend.xdata},
+                yAxis:{type:'value'},
+                series:[{type:'line',data:res.data.trend.ydata}]
+            });
+
+            var chartPie = echarts.init(document.getElementById("chartPie"));
+            chartPie.setOption({
+                series:[{type:'pie',radius:'60%',data:res.data.pieData}]
+            });
+        }
+    });
+});
+</script>
+
+{% endblock %}
+
+

@@ -11,6 +11,23 @@
         html,body{height:100%;margin:0;}
         .layui-layout-body{height:100%;}
         .layui-side{width:220px;}
+        html,body{
+    margin:0;
+    padding:0;
+}
+.layui-layout-body{
+    margin:0;
+    padding:0;
+}
+.layui-layout-admin .layui-header{
+    top:0 !important;
+    margin-top:0 !important;
+    padding-top:0 !important;
+}
+.layui-layout-header-nav{
+    margin:0 !important;
+    padding:0 !important;
+}
     </style>
 </head>
 <body class="layui-layout-body layui-layout-fluid">
@@ -26,26 +43,32 @@
     </div>
     <div class="layui-layout-body">
         <div class="layui-side layui-bg-black">
-            <ul class="layui-nav layui-nav-tree" lay-filter="leftMenu">
-                <li class="layui-nav-item layui-this">
-                    <a href="/dashboard"><i class="layui-icon layui-icon-home"></i> <cite>工作台</cite></a>
-                </li>
-                <li class="layui-nav-item">
-                    <a href="javascript:;"><i class="layui-icon layui-icon-user"></i> <cite>系统管理</cite></a>
-                    <dl class="layui-nav-child">
-                        <dd><a href="#">押运人员管理</a></dd>
-                        <dd><a href="#">网点机构管理</a></dd>
-                    </dl>
-                </li>
-                <li class="layui-nav-item">
-                    <a href="javascript:;"><i class="layui-icon layui-icon-file"></i> <cite>库存业务</cite></a>
-                    <dl class="layui-nav-child">
-                        <dd><a href="/customer">抵质押品库存</a></dd>
-                        <dd><a href="#">款箱出入库</a></dd>
-                    </dl>
-                </li>
-            </ul>
-        </div>
+    <div class="layui-side-scroll">
+        <ul class="layui-nav layui-nav-tree" lay-filter="leftMenu">
+            <li class="layui-nav-item">
+                <a href="/dashboard">工作台</a>
+            </li>
+            <li class="layui-nav-item">
+                <a href="javascript:;">系统管理</a>
+                <dl class="layui-nav-child">
+                    <!-- 押运人员管理 -->
+                    <dd>
+                        <a href="/escort">押运人员管理</a>
+                    </dd>
+                    <!-- 网点机构管理 -->
+                    <dd>
+                        <a href="/org">网点机构管理</a>
+                    </dd>
+                    <!-- 你之前的客户管理也可以放这里 -->
+                    <dd>
+                        <a href="/customer">客户管理</a>
+                    </dd>
+                </dl>
+            </li>
+        </ul>
+    </div>
+</div>
+
         <div class="layui-layout-main">
             <div class="layui-body">
                 {% block content %}
@@ -55,9 +78,22 @@
     </div>
 </div>
 <script>
-layui.use('element', function(){
+layui.use(['element', 'jquery'], function(){
     var element = layui.element;
-});
+    var $ = layui.jquery;
+    var path = window.location.pathname;
+    $(".layui-nav-tree a").each(function(){
+        var href = $(this).attr("href");
+        if(href === path){
+            $(this).parent().addClass("layui-this");
+            $(this).closest(".layui-nav-item").addClass("layui-nav-itemed");
+        }
+    })
+    // 重点：不要 element.render("nav")
+})
+
+
+
 </script>
 </body>
 </html>

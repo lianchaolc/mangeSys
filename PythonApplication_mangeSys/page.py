@@ -27,3 +27,14 @@ def customer_page():
 def test_page():
     return render_template("test.html")
 
+# 押运人员管理页面
+@page_bp.route("/escort")
+def escort_page():
+    return render_template("escort.html")
+
+# 网点机构管理页面
+@page_bp.route("/org")
+def org_page():
+    return render_template("org.html")
+
+

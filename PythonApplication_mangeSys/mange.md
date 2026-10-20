@@ -728,4 +728,17 @@ Layui 2.x 标准结构是：
   <!-- 底部（可选，版本、版权） -->
   <div class="layui-footer">© 2026 现金押运管理系统</div>
 </div>
+``
+
+
+2020.10.20
+清除所有的缓存
+果你想一次性**把整个项目里所有文件夹里面藏着的全部 **pycache** 都清掉**（推荐，modules 里面也会生成）：
+
 ```
+Get-ChildItem -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
+````
+
+# 什么 html 模板文件需要保存为 UTF‑8
+
+简单说：**Flask/Jinja2 读取模板默认强制用 UTF‑8 编码打开文件**，你的页面里面有大量中文汉字，编码不匹配就直接报错。

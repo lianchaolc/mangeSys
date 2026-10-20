@@ -26,6 +26,7 @@
     <Compile Include="config.py" />
     <Compile Include="init_data.py" />
     <Compile Include="models.py" />
+    <Compile Include="modules\business.py" />
     <Compile Include="page.py" />
     <Compile Include="PythonApplication_mangeSys.py" />
     <Compile Include="routes.py" />
@@ -42,6 +43,7 @@
   <ItemGroup>
     <Folder Include="instance\" />
     <Folder Include="mdimage\" />
+    <Folder Include="modules\" />
     <Folder Include="templates\" />
   </ItemGroup>
   <ItemGroup>

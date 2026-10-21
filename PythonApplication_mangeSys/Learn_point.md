@@ -35,6 +35,10 @@ def resp_fail(msg="失败"):
 - 前端 Layui 表格分页，改造 `/api/customer/list` 接口
 - 练习：SQLAlchemy `paginate()` 使用。
 
+
+索条件 + 分页联动
+
+
 ### 3. 编辑修改功能
 
 客户管理目前只有新增、删除，缺少编辑。

@@ -29,6 +29,10 @@ import re
  #   
 @api_bp.route("/customer/list", methods=["GET"])
 def customer_list_api():
+    #后端防护
+    # 最小页码强制=1
+# 还可以拿到总页数，超过最大页就自动变成最后一页
+    page=max(page,1)
     # 获取url参数，给默认值
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("pageSize", 10, type=int)
@@ -44,7 +48,7 @@ def customer_list_api():
         result.append(cus.to_dict())
 
     return jsonify({
-        "code": 200,
+        "code": 0,
         "data": result,
         "total": pagination.total,       # 总条数
         "page": page,

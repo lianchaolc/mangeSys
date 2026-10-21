@@ -10,7 +10,6 @@
     pointer-events: auto !important;
 }
 </style>
-
 <style>
     * {
         margin: 0;
@@ -109,12 +108,10 @@
         background-color: #e64545;
     }
 </style>
-
 <!-- 引入layui css与js，必须要有！！ -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src@2.9.13/dist/css/layui.css">
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/layui-src@2.9.13/dist/layui.js"></script>
-
 <!-- ========== 补上缺失的编辑弹窗DOM ========== -->
 <div id="editCustomerDialog" style="display: none; padding:20px;">
     <div class="layui-form">
@@ -151,9 +148,11 @@
         </div>
     </div>
 </div>
-
 <div class="container">
     <h2>客户管理系统</h2>
+
+  
+
     <div class="form-card">
         <h3>新增客户</h3>
         <div class="form-row">
@@ -167,6 +166,10 @@
             <button class="btn-add" onclick="addCustomer()">提交新增</button>
         </div>
     </div>
+      <!-- layui分页表格容器 -->
+    <table id="customerTable" lay-filter="customerTable"></table>
+    <!-- 【注释：旧手写渲染表格，现在改用layui table服务端分页，保留代码不删除】 -->
+    <!--
     <div class="table-card">
         <table>
             <thead>
@@ -184,10 +187,63 @@
             </tbody>
         </table>
     </div>
+    -->
+
 </div>
+
+{% raw %}
+<!-- layui表格操作按钮模板，raw阻止jinja解析 {{d.id}} -->
+<script type="text/html" id="operTpl">
+<div style="display:flex;gap:8px;">
+    <button class="layui-btn layui-btn-warm layui-btn-xs" onclick="editCustomer({{d.id}})">修改</button>
+    <button class="layui-btn layui-btn-danger layui-btn-xs" onclick="del({{d.id}})">删除</button>
+</div>
+</script>
+{% endraw %}
 
 <script>
 const baseUrl = "/api/customer"
+
+// layui table 服务端分页渲染
+layui.use(['table'], function(){
+    var table = layui.table;
+    table.render({
+        elem: '#customerTable',
+        url: 'api/customer/list',
+        method: 'GET',
+        request: {
+            pageName: 'page',
+            limitName: 'pageSize'
+        },
+        parseData: function(res){
+            return {
+                code: res.code,
+                data: res.data,
+                count: res.total
+            }
+        },
+     
+        page: {
+         curr: 1,
+         limit: 10,
+         limits: [5,10,20,50],
+         prev: '上一页',
+         next: '下一页',
+         first: '首页',
+         last: '尾页'
+        },
+
+        cols: [[
+            {field:'id', title:'ID', width:60},
+            {field:'name', title:'姓名'},
+            {field:'phone', title:'手机号'},
+            {field:'email', title:'邮箱'},
+            {field:'address', title:'地址'},
+            {field:'create_time', title:'创建时间'},
+            {title:'操作', width:160, templet:'#operTpl'}
+        ]]
+    });
+});
 
 // 新增客户，带前端校验
 async function addCustomer(){
@@ -230,7 +286,10 @@ async function addCustomer(){
         const ret = await res.json()
         if(ret.code ===0){
             alert(ret.msg)
-            loadList()
+            // loadList(); // 旧的本地刷新列表（注释保留）
+            // layui表格重载，新增完成刷新分页表格
+            layui.table.reload('customerTable');
+
             document.getElementById("name").value = ""
             document.getElementById("phone").value = ""
             document.getElementById("email").value = ""
@@ -244,7 +303,8 @@ async function addCustomer(){
     }
 }
 
-// 加载客户列表
+// 【注释：旧的js渲染列表函数，现在layui服务端分页接管，保留代码】
+/*
 async function loadList(){
     const res = await fetch("/api/customer/list")
     const ret = await res.json()
@@ -268,6 +328,7 @@ async function loadList(){
     })
     document.getElementById("tableBody").innerHTML = html;
 }
+*/
 
 // 删除客户
 async function del(id){
@@ -276,7 +337,8 @@ async function del(id){
         const res = await fetch(`${baseUrl}/${id}`,{method:"DELETE"})
         const r = await res.json()
         alert(r.msg);
-        loadList();
+        // loadList(); //旧刷新，注释保留
+        layui.table.reload('customerTable'); //重载layui分页表格
     }catch(err){
         console.error(err)
         alert("删除请求异常")
@@ -285,18 +347,15 @@ async function del(id){
 
 let editLayerIndex = null;
 const $editDom = $("#editCustomerDialog");
-
 layui.use(['layer','form'], function(){
     const layer = layui.layer;
     const form = layui.form;
-
     //取消按钮
     $("#btn-close-edit").on("click", function () {
         if(editLayerIndex){
             layer.close(editLayerIndex);
         }
     })
-
     //保存修改按钮
     $("#btn-save-edit").on("click", async function () {
         const cid = $("#edit-id").val();
@@ -317,7 +376,8 @@ layui.use(['layer','form'], function(){
         if (ret.code === 0) {
             layer.msg("修改成功");
             layer.close(editLayerIndex);
-            loadList();
+            // loadList(); //旧刷新注释保留
+            layui.table.reload('customerTable');
         } else {
             layer.msg(ret.msg);
         }
@@ -338,13 +398,11 @@ async function editCustomer(cid) {
             throw new TypeError("Oops, we haven't got JSON!");
         }
         const data = await res.json();
-
         if (data.code !== 0) {
             layer.msg(data.msg || "获取数据失败", { icon: 2 });
             return;
         }
         const cus = data.data;
-
         // ✅ 直接字符串模板，不依赖页面隐藏DOM，不会克隆丢失事件
         let htmlTpl = `
         <div class="layui-form" style="padding:20px;">
@@ -381,7 +439,6 @@ async function editCustomer(cid) {
             </div>
         </div>
         `;
-
         editLayerIndex = layer.open({
             type: 1,
             title: "编辑客户",
@@ -396,15 +453,12 @@ async function editCustomer(cid) {
                 layero.find("#edit-phone").val(cus.phone);
                 layero.find("#edit-email").val(cus.email);
                 layero.find("#edit-address").val(cus.address);
-
                 // ❗普通input不要执行form.render，会造成光标消失bug
                 // form.render(null, layero);
-
                 // 事件委托：在layero上绑定按钮，弹窗内部按钮直接生效，不需要克隆事件
                 layero.on("click", ".btn-close", function () {
                     layer.close(index);
                 })
-
                 layero.on("click", ".btn-save", async function () {
                     const submitData = {
                         id: layero.find("#edit-id").val(),
@@ -422,12 +476,12 @@ async function editCustomer(cid) {
                     if(retPut.code ===0){
                         layer.msg("修改成功");
                         layer.close(index);
-                        loadList();
+                        // loadList(); //旧刷新注释保留
+                        layui.table.reload('customerTable');
                     }else{
                         layer.msg(retPut.msg,{icon:2})
                     }
                 })
-
                 // 修复点击输入框光标丢失：阻止mousedown冒泡给layer遮罩
                 layero.on("mousedown",".layui-input",function(e){
                     e.stopPropagation();
@@ -437,15 +491,13 @@ async function editCustomer(cid) {
                 editLayerIndex = null;
             }
         });
-
     } catch (error) {
         console.error('Edit customer failed:', error);
         layer.msg("网络请求异常，请稍后重试", { icon: 2 });
     }
 }
 
-
-//页面初始化
-loadList();
+//页面初始化，旧的loadList()注释，由layui table自动加载分页数据
+// loadList();
 </script>
 {% endblock %}

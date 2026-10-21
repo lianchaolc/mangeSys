@@ -742,3 +742,16 @@ Get-ChildItem -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -
 # 什么 html 模板文件需要保存为 UTF‑8
 
 简单说：**Flask/Jinja2 读取模板默认强制用 UTF‑8 编码打开文件**，你的页面里面有大量中文汉字，编码不匹配就直接报错。
+
+
+
+
+
+2026.10.33 可以这样写
+
+<td>
+<div style="display:flex;gap:8px;">
+    <button class="layui-btn layui-btn-warm layui-btn-xs" style="width:72px" onclick="editCustomer(${shturl.})">修改</button>
+    <button class="layui-btn layui-btn-danger layui-btn-xs" style="width:72px" onclick="del(${shturl.})">删除</button>
+</div>
+</td>

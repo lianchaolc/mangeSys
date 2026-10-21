@@ -1,6 +1,16 @@
 {% extends "layout.html" %}
-
 {% block content %}
+<style>
+/* 修复layui layer弹窗输入框无法点击、没有光标的经典问题 */
+.layui-layer-content {
+    overflow: visible !important;
+    pointer-events: auto !important;
+}
+.layui-input{
+    pointer-events: auto !important;
+}
+</style>
+
 <style>
     * {
         margin: 0;
@@ -8,7 +18,6 @@
         box-sizing: border-box;
         font-family: "Microsoft Yahei", sans-serif;
     }
-    /* 重点：删掉body样式！body属于layout母版，子页面不要设置body */
     .container {
         max-width: 1000px;
         margin: 0 auto;
@@ -101,6 +110,48 @@
     }
 </style>
 
+<!-- 引入layui css与js，必须要有！！ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src@2.9.13/dist/css/layui.css">
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/layui-src@2.9.13/dist/layui.js"></script>
+
+<!-- ========== 补上缺失的编辑弹窗DOM ========== -->
+<div id="editCustomerDialog" style="display: none; padding:20px;">
+    <div class="layui-form">
+        <input type="hidden" id="edit-id">
+        <div class="layui-form-item">
+            <label class="layui-form-label">姓名</label>
+            <div class="layui-input-block">
+                <input type="text" id="edit-name" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">手机号</label>
+            <div class="layui-input-block">
+                <input type="text" id="edit-phone" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">邮箱</label>
+            <div class="layui-input-block">
+                <input type="text" id="edit-email" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">地址</label>
+            <div class="layui-input-block">
+                <input type="text" id="edit-address" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-input-block">
+                <button type="button" class="layui-btn" id="btn-save-edit">保存修改</button>
+                <button type="button" class="layui-btn layui-btn-primary" id="btn-close-edit">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="container">
     <h2>客户管理系统</h2>
     <div class="form-card">
@@ -137,6 +188,7 @@
 
 <script>
 const baseUrl = "/api/customer"
+
 // 新增客户，带前端校验
 async function addCustomer(){
     const name = document.getElementById("name").value.trim()
@@ -176,10 +228,9 @@ async function addCustomer(){
             body:JSON.stringify({name,phone,email,address})
         })
         const ret = await res.json()
-        if(res.ok){
+        if(ret.code ===0){
             alert(ret.msg)
             loadList()
-            //清空输入框
             document.getElementById("name").value = ""
             document.getElementById("phone").value = ""
             document.getElementById("email").value = ""
@@ -192,7 +243,8 @@ async function addCustomer(){
         alert("网络请求异常，请检查服务！")
     }
 }
-// 加载客户列表，页面打开自动执行
+
+// 加载客户列表
 async function loadList(){
     const res = await fetch("/api/customer/list")
     const ret = await res.json()
@@ -208,13 +260,15 @@ async function loadList(){
             <td>${item.address}</td>
             <td>${item.create_time}</td>
             <td>
-                <button class="btn-del" onclick="del(${item.id})">删除</button>
+               <button class="layui-btn layui-btn-warm layui-btn-xs" onclick="editCustomer(${item.id})">修改</button>
+               <button class="layui-btn layui-btn-danger layui-btn-xs" onclick="del(${item.id})">删除</button>
             </td>
         </tr>
         `
     })
     document.getElementById("tableBody").innerHTML = html;
 }
+
 // 删除客户
 async function del(id){
     if(!confirm("确定删除？")) return;
@@ -228,8 +282,170 @@ async function del(id){
         alert("删除请求异常")
     }
 }
-// 页面初始化，只执行1次，自动加载表格
+
+let editLayerIndex = null;
+const $editDom = $("#editCustomerDialog");
+
+layui.use(['layer','form'], function(){
+    const layer = layui.layer;
+    const form = layui.form;
+
+    //取消按钮
+    $("#btn-close-edit").on("click", function () {
+        if(editLayerIndex){
+            layer.close(editLayerIndex);
+        }
+    })
+
+    //保存修改按钮
+    $("#btn-save-edit").on("click", async function () {
+        const cid = $("#edit-id").val();
+        const submitData = {
+            name: $("#edit-name").val(),
+            phone: $("#edit-phone").val(),
+            email: $("#edit-email").val(),
+            address: $("#edit-address").val()
+        }
+        const res = await fetch(`/api/customer/${cid}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(submitData)
+        })
+        const ret = await res.json();
+        if (ret.code === 0) {
+            layer.msg("修改成功");
+            layer.close(editLayerIndex);
+            loadList();
+        } else {
+            layer.msg(ret.msg);
+        }
+    })
+})
+
+//打开编辑弹窗
+async function editCustomer(cid) {
+    const layer = layui.layer;
+    const form = layui.form;
+    try {
+        const res = await fetch(`/api/customer/${cid}`);
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new TypeError("Oops, we haven't got JSON!");
+        }
+        const data = await res.json();
+
+        if (data.code !== 0) {
+            layer.msg(data.msg || "获取数据失败", { icon: 2 });
+            return;
+        }
+        const cus = data.data;
+
+        // ✅ 直接字符串模板，不依赖页面隐藏DOM，不会克隆丢失事件
+        let htmlTpl = `
+        <div class="layui-form" style="padding:20px;">
+            <input type="hidden" id="edit-id">
+            <div class="layui-form-item">
+                <label class="layui-form-label">姓名</label>
+                <div class="layui-input-block">
+                    <input type="text" id="edit-name" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">手机号</label>
+                <div class="layui-input-block">
+                    <input type="text" id="edit-phone" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">邮箱</label>
+                <div class="layui-input-block">
+                    <input type="text" id="edit-email" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">地址</label>
+                <div class="layui-input-block">
+                    <input type="text" id="edit-address" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-input-block">
+                    <button type="button" class="layui-btn btn-save">保存修改</button>
+                    <button type="button" class="layui-btn layui-btn-primary btn-close">取消</button>
+                </div>
+            </div>
+        </div>
+        `;
+
+        editLayerIndex = layer.open({
+            type: 1,
+            title: "编辑客户",
+            area: ['520px', '420px'],
+            anim: 0,
+            shade: 0.3,
+            content: htmlTpl,
+            success: function(layero, index) {
+                // 给弹窗内输入框回填数据
+                layero.find("#edit-id").val(cid);
+                layero.find("#edit-name").val(cus.name);
+                layero.find("#edit-phone").val(cus.phone);
+                layero.find("#edit-email").val(cus.email);
+                layero.find("#edit-address").val(cus.address);
+
+                // ❗普通input不要执行form.render，会造成光标消失bug
+                // form.render(null, layero);
+
+                // 事件委托：在layero上绑定按钮，弹窗内部按钮直接生效，不需要克隆事件
+                layero.on("click", ".btn-close", function () {
+                    layer.close(index);
+                })
+
+                layero.on("click", ".btn-save", async function () {
+                    const submitData = {
+                        id: layero.find("#edit-id").val(),
+                        name: layero.find("#edit-name").val(),
+                        phone: layero.find("#edit-phone").val(),
+                        email: layero.find("#edit-email").val(),
+                        address: layero.find("#edit-address").val()
+                    }
+                    const resPut = await fetch(`/api/customer/${submitData.id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(submitData)
+                    })
+                    const retPut = await resPut.json();
+                    if(retPut.code ===0){
+                        layer.msg("修改成功");
+                        layer.close(index);
+                        loadList();
+                    }else{
+                        layer.msg(retPut.msg,{icon:2})
+                    }
+                })
+
+                // 修复点击输入框光标丢失：阻止mousedown冒泡给layer遮罩
+                layero.on("mousedown",".layui-input",function(e){
+                    e.stopPropagation();
+                })
+            },
+            end: function () {
+                editLayerIndex = null;
+            }
+        });
+
+    } catch (error) {
+        console.error('Edit customer failed:', error);
+        layer.msg("网络请求异常，请稍后重试", { icon: 2 });
+    }
+}
+
+
+//页面初始化
 loadList();
 </script>
-
 {% endblock %}

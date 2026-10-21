@@ -106,3 +106,122 @@ def resp_fail(msg="失败"):
 
 > 
 > 每完成一个小功能，就做一次 git commit 阶段性提交，方便回退。
+
+
+
+
+# 你现在要做的事，按顺序一步步来，不要跳，不要急着写新页面
+
+> 
+> 当前现状：登录、session 存权限、客户列表接口全部跑通；超级 admin 逻辑已经想好；**还没有真正验证权限拦截是否生效**。
+
+## 第 1 步：把权限装饰器代码复制到 routes.py
+
+复制这个 `require_perm` 装饰器，放到 routes.py 顶部，api_bp 定义之后的位置：
+
+```
+from functools import wraps
+from flask import session, jsonify
+
+def require_perm(perm_key):
+    def decorator(f):
+        @wraps(f)
+        def inner(*args, **kwargs):
+            perms = session.get("permissions", [])
+            user_id = session.get("user_id")
+            if not user_id:
+                return jsonify({"code":401,"msg":"未登录"})
+            # admin超级用户直接放行
+            if "admin" in perms:
+                return f(*args, **kwargs)
+            if perm_key not in perms:
+                return jsonify({"code":403,"msg":"没有操作权限"})
+            return f(*args,**kwargs)
+        return inner
+    return decorator
+```
+
+## 第 2 步：给你的接口加上装饰器
+
+示例：
+
+```
+@api_bp.route("/api/customer/list", methods=["GET"])
+@require_perm("customer:list")
+def customer_list_api():
+    # 你的原有代码
+```
+
+后续新增、编辑、删除接口，分别加上：
+
+- `@require_perm("customer:add")`
+- `@require_perm("customer:edit")`
+- `@require_perm("customer:delete")`
+
+保存，重启 Flask。
+
+> 
+> 现在用你现在 admin 账号登录，因为 permissions 里面有`admin`，所有接口直接放行，照常访问。
+
+## 第 3 步：造一个普通测试用户（**不用写页面，用数据库工具**）
+
+用 DB Browser for SQLite 打开 `crm.db`
+
+1. 新建角色：角色名称：客户只读员
+2. 在中间表 `role_permission`：给这个角色只绑定权限 `customer:list`，**不要勾选 admin**
+3. 在 `user_role` 中间表，新建一条关联，把一个测试用户和这个角色绑定。
+
+> 
+> 这个普通用户登录后 session 权限只会是 `["customer:list"]`。
+
+## 第 4 步：测试权限效果（核心验证）
+
+1. 登录这个普通账号，看控制台 print 输出，确认权限只有 `['customer:list']`
+2. ✅访问客户列表接口：可以正常返回数据（200）
+3. ✅手动调用新增客户接口（比如浏览器 F12 复制接口地址访问），预期返回 `code:403 没有操作权限`
+
+> 
+> 如果出现 403，代表后端鉴权完整生效。
+
+## 第 5 步：处理前端页面按钮权限
+
+打开 `templates/customer.html`
+修改按钮判断，兼容 admin 超级用户：
+
+```
+{% if "admin" in session.permissions or "customer:add" in session.permissions %}
+<button class="layui-btn" id="addBtn">新增客户</button>
+{% endif %}
+
+{% if "admin" in session.permissions or "customer:delete" in session.permissions %}
+<button class="layui-btn layui-btn-danger">删除</button>
+{% endif %}
+```
+
+- admin 账号：按钮全部显示
+- 普通只读账号：新增、删除按钮直接隐藏
+
+## ✅做完上面，你的整套权限逻辑就全部调试完毕
+
+> 
+> ⚠**现在不要写角色管理、用户管理页面！** 那是后面收尾才做的。
+
+# 做完测试之后两种选择
+
+1. 课程作业到此够用：权限逻辑跑通即可，权限维护靠数据库工具手动改数据。
+2. 如果要做完整成品：再去写用户管理、角色管理页面和对应的增删改接口。
+
+## 现在你马上动手的最小行动
+
+1. 粘贴装饰器代码
+2. 给 customer_list_api 加上`@require_perm("customer:list")`，重启 flask
+3. 用数据库工具创建只读角色 + 普通测试账号，登录测试 403 拦截。
+
+> 
+> 你测试完告诉我：普通用户调用新增接口是返回 403，还是直接成功？我帮你判断哪里还有问题。
+
+ 如何在数据库中添加普通用户权限？
+
+ 如何验证权限拦截是否生效？
+
+ 如何在代码中使用权限装饰器？

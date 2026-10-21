@@ -3,6 +3,9 @@
 # 存放项目通用工具：统一接口返回、通用处理函数
 import re
 from flask import jsonify
+#权限装饰器（核心！接口拦截）新建工具文件 `utils.py`
+from functools import wraps
+from flask import session, jsonify
 def check_phone(phone):
     pattern = r'^1[3-9]\d{9}$'
     if re.match(pattern, phone):
@@ -34,3 +37,31 @@ def resp_fail(msg="操作失败"):
         "msg": msg,      # 错误提示文本
         "data": None     # 失败情况下一般没有返回数据
     })
+
+
+
+
+#权限代码
+def require_permission(perm_key):
+    """
+    @require_permission("customer:delete")
+    接口装饰器，校验是否拥有某个权限
+    """
+    def decorator(f):
+        @wraps(f)
+        def inner(*args,**kwargs):
+            # 1 判断是否登录
+            user_id = session.get("user_id")
+            if not user_id:
+                return jsonify({"code":401,"msg":"请先登录"})
+            # 2 获取登录用户拥有的权限集合（登录的时候存入session）
+            user_perms = session.get("permissions",set())
+            # 超级管理员特殊判断，如果是admin角色直接放行
+            if "admin" in user_perms:
+                return f(*args,**kwargs)
+            # 判断是否拥有该权限
+            if perm_key not in user_perms:
+                return jsonify({"code":403,"msg":"权限不足，禁止访问"})
+            return f(*args,**kwargs)
+        return inner
+    return decorator

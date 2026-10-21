@@ -28,6 +28,11 @@ logging.basicConfig(level=logging.ERROR)
 # api_bp 在你的api文件中
 from routes import api_bp
 from modules.business import bp as business_bp
+
+
+from flask import Flask
+from models import db
+from routes import auth_bp,api_bp
 def create_app():
    # """
    # 应用工厂函数（Flask标准写法）
@@ -35,6 +40,15 @@ def create_app():
    # """
     # 实例化Flask应用
     app = Flask(__name__)
+
+    # session加密密钥，必须配置
+    app.secret_key = "supersecretkey123456"
+# 读取数据库配置
+    app.config.from_pyfile("config.py")
+    db.init_app(app)
+
+
+
    # 配置数据库连接地址，使用sqlite，数据库文件在instance/crm.db
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/crm.db'
 # 关闭模型修改追踪，避免无用警告和额外性能开销
@@ -46,7 +60,7 @@ def create_app():
 
     # 将db数据库实例绑定到当前flask app
     # 早期写法可以直接db = SQLAlchemy(app)，工厂模式下用init_app延迟初始化
-    db.init_app(app)
+    
 
     # 注册蓝图，把api下面所有路由交给app管理
     app.register_blueprint(api_bp)
@@ -54,6 +68,8 @@ def create_app():
     # 返回组装好的app实例
     #modle 类
     app.register_blueprint(business_bp)
+
+    app.register_blueprint(auth_bp)
 # 404状态码处理器：访问不存在的路由/接口时触发
 # 属于HTTP状态捕获，不是代码抛出的Exception异常，和上面全局兜底是两套独立逻辑
     @app.errorhandler(404)
@@ -106,7 +122,7 @@ def create_app():
     @app.after_request
     def after_request_func(response):
         #打印请求路径，打印方法
-         print(f"request请求:{request.method} {request.path}")
+        
          # 示例：获取token
         # token = request.headers.get("Authorization")
         # if not token:

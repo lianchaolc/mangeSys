@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>系统登录</title>
+    <style>
+        .login-box {width:400px;margin:120px auto;background:#fff;padding:30px;border-radius:8px;}
+        .item{margin:16px 0;}
+        input{width:260px;padding:8px;font-size:14px;}
+        button{padding:9px 22px;background:#009688;color:white;border:none;border-radius:4px;cursor:pointer;}
+    </style>
+</head>
+<body style="background:#f4f4f4;">
+    <div class="login-box">
+        <h2 style="text-align:center;">客户管理系统</h2>
+        <form>
+    <div class="item">
+        <label>账号：</label>
+        <input type="text" id="username" placeholder="请输入账号">
+    </div>
+    <div class="item">
+        <label>密码：</label>
+        <input type="password" id="password" placeholder="请输入密码">
+    </div>
+    <div class="item">
+        <button type="button" id="loginBtn">登录</button>
+    </div>
+</form>
+
+    </div>
+
+<script>
+document.getElementById("loginBtn").onclick = async function () {
+    let username = document.getElementById("username").value.trim();
+    let password = document.getElementById("password").value.trim();
+    if(!username || !password){
+        alert("账号密码不能为空");
+        return;
+    }
+    try{
+        let res = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({username, password})
+        })
+        // 先判断状态码
+        if(!res.ok){
+            alert("服务器错误，状态码：" + res.status);
+            return;
+        }
+        let ret = await res.json();
+        if(ret.code === 0){
+            alert("登录成功");
+            location.href = "/customer";
+
+        }else{
+            alert(ret.msg);
+        }
+    }catch(err){
+        console.error("请求异常：", err)
+        alert("请求失败："+err)
+    }
+}
+</script>
+
+</body>
+</html>

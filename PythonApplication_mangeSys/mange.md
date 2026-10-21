@@ -755,3 +755,563 @@ Get-ChildItem -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -
     <button class="layui-btn layui-btn-danger layui-btn-xs" style="width:72px" onclick="del(${shturl.})">删除</button>
 </div>
 </td>
+
+
+
+
+# 限管理功能（RBAC 角色‑权限模型，线上真实项目主流）
+
+> 
+> 真实线上几乎全部用 **RBAC（Role‑Based Access Control 基于角色的访问控制）**
+> 用户 → 分配角色 → 角色绑定若干权限；用户拥有角色下全部权限。
+> 避免给每一个用户单独配置权限（用户多的时候维护爆炸）。
+
+
+> 真实线上几乎全部用 **RBAC（Role‑Based Access Control 基于角色的访问控制）**
+> 用户 → 分配角色 → 角色绑定若干权限；用户拥有角色下全部权限。
+> 避免给每一个用户单独配置权限（用户多的时候维护爆炸）。
+
+## 1｜业务逻辑（真实线上逻辑）
+
+### 模型四张核心表（数据库）
+
+1. **用户表 user**`id, username,password,…` 登录账号
+2. **角色表 role**`id, role_name, remark`
+示例角色：`admin超级管理员`、`manager业务管理员`、`staff普通业务员`
+3. **用户‑角色中间表 user_role【多对多】**
+
+> 
+> 一个用户可以多个角色；一个角色可以分给多个用户
+> `id, user_id, role_id`
+
+4. **权限表 permission**
+存储接口 / 页面的权限标识（字符串标记）
+`id, perm_key, perm_name`
+`perm_key`权限标识，后端代码判断用，示例：
+
+- `customer:list` 查看客户列表
+- `customer:add` 新增客户
+- `customer:edit` 修改客户
+- `customer:delete` 删除客户
+
+5. **角色‑权限中间表 role_permission【多对多】**
+
+> 
+> 一个角色拥有多条权限；一个权限可以分配给多个角色
+> `id, role_id, perm_id`
+
+### 整体逻辑流程
+
+1. 登录：用户输入账号密码，登录成功，后端把**该用户的全部权限集合查出来，存入 session /jwt**。
+2. 请求接口时：**拦截器（装饰器）校验**
+访问客户新增接口 `/api/customer/add`，需要权限标识 `customer:add`
+   - 如果用户权限集合包含该标识 → 放行执行业务代码
+   - 不包含 → 返回 `code:403` 禁止访问，前端提示无权限。
+
+> 
+> 关键：**权限判断只认 perm_key 字符串，不和 id、页面写死耦合**。
+
+### 业务规则
+
+1. 超级管理员 admin：默认拥有全部权限，跳过校验。
+2. 一个用户可以拥有多个角色，权限取并集（A 角色有查看，B 角色有新增，用户就同时拥有两个）。
+3. 新增角色时勾选权限；给用户分配角色；**不要直接给用户绑定权限**（RBAC 标准）。
+4. 前端：拿到当前用户权限列表，根据权限隐藏 / 显示按钮。
+
+> 
+> 后端校验是**必须的，不能只靠前端隐藏按钮**！前端只是 UI 体验，后端拦截才是安全防线。
+
+> 
+> ⚠️重要：前端隐藏删除按钮，但是用户可以直接抓包调用删除接口；**后端必须二次校验权限，不能信任前端**。
+
+## 2｜用到技术栈（贴近线上，Flask 项目）
+
+### 后端
+
+1. **SQLAlchemy 多对多关系**：`user ↔ role`、`role ↔ permission`两张中间表。
+2. **Flask‑session 或者 JWT**：登录后存储用户 id、用户权限集合。
+3. **Python 装饰器 @decorator**：做接口权限拦截（线上最常用）。
+4. 数据库模型：4 张表，多对多关系。
+
+### 前端
+
+1. 登录成功之后，请求接口拿到当前用户权限列表保存（存在 js 全局变量）。
+2. 页面按钮做判断：有`customer:delete`权限才显示删除按钮；没有就隐藏。
+3. 无权限返回 403，layer 弹窗提示 “没有该操作权限”。
+
+### 两种会话方案（二选一）
+
+- 小项目：`flask‑session` 存在服务端 session
+- 线上前后端分离项目：**JWT 令牌**，token 放请求 header，无状态，适合多服务器部署。
+
+> 
+> 你的项目现在是模板渲染，优先使用 session 最简单。
+
+## 3｜实现（最小可运行 RBAC，贴合你客户管理项目）
+
+### 3‑1 数据库模型 models.py
+
+```
+from flask_sqlalchemy import SQLAlchemy
+db = SQLAlchemy()
+
+# =========权限表=========
+class Permission(db.Model):
+    __tablename__ = "permission"
+    id = db.Column(db.Integer, primary_key=True)
+    perm_key = db.Column(db.String(64), unique=True, nullable=False) #权限标识，如 customer:delete
+    perm_name = db.Column(db.String(64), nullable=False) #中文名称：删除客户
+
+# =========角色表=========
+class Role(db.Model):
+    __tablename__ = "role"
+    id = db.Column(db.Integer, primary_key=True)
+    role_name = db.Column(db.String(32), unique=True, nullable=False)
+    remark = db.Column(db.String(128))
+    #角色 <--->权限 多对多
+    permissions = db.relationship("Permission", secondary="role_permission", backref="roles")
+
+#角色权限中间表
+role_permission = db.Table("role_permission",
+    db.Column("role_id",db.Integer,db.ForeignKey("role.id"),primary_key=True),
+    db.Column("perm_id",db.Integer,db.ForeignKey("permission.id"),primary_key=True)
+)
+
+#用户角色中间表
+user_role = db.Table("user_role",
+    db.Column("user_id",db.Integer,db.ForeignKey("user.id"),primary_key=True),
+    db.Column("role_id",db.Integer,db.ForeignKey("role.id"),primary_key=True)
+)
+
+#用户表
+class User(db.Model):
+    __tablename__ = "user"
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(32),unique=True,nullable=False)
+    password = db.Column(db.String(128),nullable=False)
+    #用户 <--->角色 多对多
+    roles = db.relationship("Role", secondary=user_role, backref="users")
+
+    # 获取该用户全部权限key集合（去重）
+    def get_perms(self):
+        perm_set = set()
+        for role in self.roles:
+            for p in role.permissions:
+                perm_set.add(p.perm_key)
+        return perm_set
+```
+
+### 3‑2 权限装饰器（核心！接口拦截）新建工具文件 `utils.py`
+
+```
+from functools import wraps
+from flask import session, jsonify
+
+def require_permission(perm_key):
+    """
+    @require_permission("customer:delete")
+    接口装饰器，校验是否拥有某个权限
+    """
+    def decorator(f):
+        @wraps(f)
+        def inner(*args,**kwargs):
+            # 1 判断是否登录
+            user_id = session.get("user_id")
+            if not user_id:
+                return jsonify({"code":401,"msg":"请先登录"})
+            # 2 获取登录用户拥有的权限集合（登录的时候存入session）
+            user_perms = session.get("permissions",set())
+            # 超级管理员特殊判断，如果是admin角色直接放行
+            if "admin" in user_perms:
+                return f(*args,**kwargs)
+            # 判断是否拥有该权限
+            if perm_key not in user_perms:
+                return jsonify({"code":403,"msg":"权限不足，禁止访问"})
+            return f(*args,**kwargs)
+        return inner
+    return decorator
+```
+
+### 3‑3 登录逻辑（登录成功，把用户权限集合放进 session）
+
+```
+from models import User
+
+@auth_bp.route("/login",methods=["POST"])
+def login():
+    username = request.json.get("username")
+    password = request.json.get("password")
+    user = User.query.filter_by(username=username).first()
+    # 省略密码校验......
+    #登录成功
+    session["user_id"] = user.id
+    # ✅把用户全部权限集合存入session，后续装饰器直接读取，不用每次查库
+    session["permissions"] = user.get_perms()
+    return jsonify({"code":0,"msg":"登录成功"})
+```
+
+### 3‑4 接口使用装饰器，给你的客户接口加上权限控制
+
+```
+from utils import require_permission
+
+#查看客户列表，需要权限 customer:list
+@api_bp.route("/customer/list")
+@require_permission("customer:list")
+def customer_list_api():
+    pass
+
+#新增客户
+@api_bp.route("/customer/add",methods=["POST"])
+@require_permission("customer:add")
+def customer_add():
+    pass
+
+#修改客户
+@api_bp.route("/customer/<int:cid>",methods=["PUT"])
+@require_permission("customer:edit")
+def customer_edit(cid):
+    pass
+
+#删除客户
+@api_bp.route("/customer/<int:cid>",methods=["DELETE"])
+@require_permission("customer:delete")
+def customer_del(cid):
+    pass
+```
+
+> 
+> 只要接口上面写 `@require_permission("xxx")`，访问接口自动校验权限；没有权限直接返回 403。
+
+## 前端配合（只是 UI 隐藏，**不能代替后端校验**）
+
+登录成功，把权限集合保存到全局 JS 变量。
+
+```
+//登录成功后端返回用户权限列表
+let userPerms = [];
+
+//工具函数判断是否有某权限
+function hasPerm(key){
+    return userPerms.includes(key)
+}
+```
+
+模板里（jinja2 模板，layui 模板内判断需要 raw）
+
+```
+// 如果没有customer:delete权限，隐藏删除按钮
+{% raw %}
+<script type="text/html" id="operTpl">
+<div style="display:flex;gap:8px;">
+    {{# if(d.perms.includes('customer:edit')){ }}
+    <button class="layui-btn layui-btn-warm layui-btn-xs" onclick="editCustomer({{d.id}})">修改</button>
+    {{# } }}
+    {{# if(d.perms.includes('customer:delete')){ }}
+    <button class="layui-btn layui-btn-danger layui-btn-xs" onclick="del({{d.id}})">删除</button>
+    {{# } }}
+</div>
+</script>
+{% endraw %}
+```
+
+## 线上真实项目补充要点（面试高频）
+
+1. **超级管理员处理**：perm_key 内置特殊标识`admin`，拥有 admin 直接跳过全部权限校验。
+2. **权限缓存**：用户修改角色 / 权限之后，需要刷新 session，否则用户还是旧权限。
+3. 不要把权限存在前端！**权限集合存储服务端 session/jwt，前端只是复制一份用来控制按钮显示**。
+4. 多对多中间表不要自己写 model，使用`db.Table`，如上示例。
+5. 权限标识命名规范：`模块:操作`，如 `customer:list`、`user:add`。
+6. 安全：**永远不要信任前端隐藏按钮，后端装饰器校验是唯一安全防线**。
+
+## 业务页面拓展（后续你可以做管理页面）
+
+- 权限管理页面：维护 permission 表
+- 角色管理页面：新增角色，勾选分配权限
+- 用户管理页面：编辑用户，勾选分配角色
+
+> 
+> 流程：新增权限 → 创建角色绑定权限 → 用户分配角色 → 用户登录拿到全部权限，接口装饰器校验。
+
+## 对比其他权限模型
+
+1. **ACL 访问控制列表**：直接给用户绑定权限，用户量大维护麻烦，小系统偶尔用。
+2. **RBAC（我们上面这套）**：绝大多数后台管理系统使用，企业项目主流。
+3. **ABAC 属性权限**：基于用户、部门、时间等复杂属性，大型复杂系统使用。
+
+如果你需要，我可以给你写：修改角色权限之后，如何刷新用户 session 权限，以及初始化基础权限角色的测试数据。
+
+权限能加入查询和分也联动吗
+
+# 权限 + 查询 + 分页联动
+
+✅ **可以结合，而且线上项目本来就是一起工作的**
+
+> 
+> 两件事分工完全不一样：
+
+1. **分页 + 搜索**：控制「查哪些数据、查多少条」（业务数据过滤）
+2. **RBAC 权限**：两件事
+① **接口访问权限**：有没有资格调用这个接口（能不能访问客户列表）
+② **数据权限（行级权限）**：就算能访问接口，**只能看自己创建的数据，不能看别人的客户**
+
+## 1｜逻辑（2 种权限，分清！）
+
+### ① 功能权限（接口权限，前面写的装饰器 `@require_permission("customer:list")`）
+
+> 
+> 控制：**你能不能调用 `/api/customer/list` 这个接口**
+
+- 没有权限：直接返回 403，根本不会执行分页、搜索代码。
+- 有权限：才进入接口，执行搜索条件、分页逻辑。
+
+### ② 数据权限【重点！和分页搜索联动】
+
+> 
+> 就算你拥有查看客户接口权限，**也不能看到全部客户，只能看属于自己的数据**。
+> 举例：业务员 A 只能看自己新增的客户；管理员可以看全部客户。
+
+业务流程：
+
+1. 用户登录，session 里面存 `user_id`，同时存角色标识（是否管理员）
+2. 进入分页接口：
+   - 先执行装饰器校验：是否拥有 `customer:list`【功能权限】
+   - 再接收前端传过来搜索条件 `name、phone`
+   - **拼接数据权限过滤条件：普通业务员只能查询自己创建的客户 `Customer.create_user_id == 当前登录user_id`；管理员不做这个过滤，可以查全部**
+   - 再拼接搜索条件（name 模糊、phone 模糊）
+   - 最后执行 `paginate()` 分页。
+
+> 
+> 关键点：**数据权限过滤条件、搜索过滤条件，全部写在 paginate 之前！**
+> 数据库先过滤【数据权限 + 搜索条件】，再分页。
+
+请求 URL 示例：
+
+```
+/api/customer/list?page=1&pageSize=10&name=张&phone=
+```
+
+后端查询伪代码：
+
+```
+#基础query
+query = Customer.query.order_by(Customer.create_time.desc())
+
+# =========数据权限过滤（和分页搜索联动）=========
+user_id = session.get("user_id")
+user_perms = session.get("permissions",set())
+# 如果不是超级管理员，只能查询自己创建的客户
+if "admin" not in user_perms:
+    query = query.filter(Customer.create_user_id == user_id)
+
+# =========业务搜索条件（前端传过来）=========
+if name:
+    query = query.filter(Customer.name.ilike(f"%{name}%"))
+if phone:
+    query = query.filter(Customer.phone.ilike(f"%{phone}%"))
+
+# =========最后分页=========
+pagination = query.paginate(page=page, per_page=page_size, error_out=False)
+```
+
+> 
+> 顺序：**数据权限过滤 → 搜索条件过滤 → paginate 分页**，顺序不能颠倒。
+
+## 2｜技术点
+
+1. **模型改造 Customer 表，增加创建人字段**
+
+```
+class Customer(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(32))
+    phone = db.Column(db.String(11))
+    email = db.Column(db.String(50))
+    address = db.Column(db.String(60))
+    create_time = db.Column(db.DateTime)
+    # ✅新增：记录这条客户是谁创建的，做数据权限
+    create_user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+```
+
+> 
+> 新增客户的时候，后端自动赋值 `create_user_id = session["user_id"]`，**前端不要传这个字段！后端从 session 拿登录用户 id**。
+
+2. 装饰器只做【功能权限校验】，放行之后，接口内部再做**数据权限过滤**。
+3. 前端完全不用改！
+   - 搜索框、分页、跳页、where 条件全部保留原样；
+   - 同一个接口，不同账号登录，返回不一样的数据；
+   - layui 表格、搜索分页联动逻辑**完全不用修改一行前端代码**。
+
+> 
+> 前端不知道数据权限逻辑，全部在后端数据库层控制，安全。
+
+## 3｜完整实现代码
+
+### 3‑1 Customer 模型增加 create_user_id（记录创建者）
+
+```
+class Customer(db.Model):
+    __tablename__ = "customer"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(32))
+    phone = db.Column(db.String(11))
+    email = db.Column(db.String(50))
+    address = db.Column(db.String(60))
+    create_time = db.Column(db.DateTime)
+    create_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), comment="创建该客户的用户id")
+```
+
+### 3‑2 新增客户接口，后端自动填充创建人 id
+
+```
+@api_bp.route("/customer/add", methods=["POST"])
+@require_permission("customer:add")
+def customer_add():
+    data = request.get_json()
+    new_cus = Customer()
+    new_cus.name = data["name"]
+    new_cus.phone = data["phone"]
+    new_cus.email = data["email"]
+    new_cus.address = data["address"]
+    # ✅后端session拿登录用户id，前端不许传这个字段！！
+    new_cus.create_user_id = session["user_id"]
+    new_cus.create_time = datetime.now()
+    db.session.add(new_cus)
+    db.session.commit()
+    return jsonify({"code":0,"msg":"新增成功"})
+```
+
+### 3‑3 【重点】分页列表接口，同时融合：权限校验 + 数据权限过滤 + 搜索条件 + 分页
+
+```
+@api_bp.route("/customer/list", methods=["GET"])
+@require_permission("customer:list") # 功能权限校验：必须拥有查看客户权限
+def customer_list_api():
+    page = request.args.get("page",1,type=int)
+    page_size = request.args.get("pageSize",10,type=int)
+    page = max(page,1)
+    page_size = max(5, min(page_size,100))
+
+    # 搜索参数（前端where自动传过来）
+    name = request.args.get("name","").strip()
+    phone = request.args.get("phone","").strip()
+
+    # 获取登录用户信息
+    login_user_id = session.get("user_id")
+    user_perms = session.get("permissions", set())
+
+    query = Customer.query.order_by(Customer.create_time.desc())
+
+    # ========= 【数据权限过滤 和分页搜索联动】 =========
+    # 不是超级管理员，只能查询自己创建的客户
+    if "admin" not in user_perms:
+        query = query.filter(Customer.create_user_id == login_user_id)
+
+    # ========= 业务搜索条件 =========
+    if name:
+        query = query.filter(Customer.name.ilike(f"%{name}%"))
+    if phone:
+        query = query.filter(Customer.phone.ilike(f"%{phone}%"))
+
+    # ========= 分页（必须在所有filter之后！） =========
+    pagination = query.paginate(page=page, per_page=page_size, error_out=False)
+
+    result = []
+    for cus in pagination.items:
+        result.append(cus.to_dict())
+
+    return jsonify({
+        "code":0,
+        "data":result,
+        "total":pagination.total,
+        "page":page,
+        "pageSize":page_size,
+        "pages":pagination.pages
+    })
+```
+
+> 
+> ✔️执行顺序：
+> 
+> 
+> 1. `@require_permission("customer:list")` 装饰器先执行：判断你有没有资格访问接口；没权限直接 403 返回。
+> 2. 拿到 query 对象。
+> 3. **数据权限过滤：普通用户只能看自己的数据**。
+> 4. **业务搜索过滤：姓名手机号模糊查询**。
+> 5. paginate 分页，返回过滤之后分页数据。
+
+## 4、修改、删除接口也要加上数据权限防护（非常重要！）
+
+> 
+> 就算拥有`customer:edit`权限，也不能修改别人创建的客户。
+
+```
+@api_bp.route("/api/customer/<int:cid>",methods=["PUT"])
+@require_permission("customer:edit")
+async def customer_edit(cid):
+    login_user_id = session.get("user_id")
+    user_perms = session.get("permissions", set())
+    cus = Customer.query.get(cid)
+    if not cus:
+        return jsonify({"code":400,"msg":"客户不存在"})
+    # 不是admin，只能修改自己创建的客户
+    if "admin" not in user_perms and cus.create_user_id != login_user_id:
+        return jsonify({"code":403,"msg":"无权修改别人的客户"})
+    # 后续更新逻辑...
+```
+
+删除接口同理，增加这层判断。
+
+## 5、前端层面
+
+**前端一行代码不用改动！！**
+
+- 搜索框、where 条件、分页、跳页全部沿用之前写好的；
+- 同一个页面，管理员登录可以看到全部客户；业务员登录只能看到自己新增的客户。
+
+## 📌线上项目总结两个权限概念（面试常考）
+
+1. **功能权限（操作权限）**：能不能调用这个接口。用装饰器`@require_permission("customer:list")`。
+2. **数据权限（行级权限）**：能看到哪些行的数据。在接口内部叠加 filter 条件，**和搜索、分页写在一起**。
+
+> 
+> 坑：
+> 
+> 
+> 1. 数据权限 filter 写在 paginate 后面，过滤失效！
+> 2. create_user_id 前端传参，恶意篡改，必须后端从 session 读取登录用户 id。
+> 3. 只做前端隐藏按钮，后端不校验，安全漏洞。
+
+### 业务运行场景演示
+
+1. 账号 A（普通业务员，无 admin）新增 2 条客户；账号 B 新增 3 条客户。
+2. A 登录访问客户列表：只能看到自己 2 条，搜索、分页只在自己的 2 条数据内生效。
+3. admin 超级管理员登录：可以看到全部 5 条，搜索分页针对全部数据。
+
+> 
+> 拓展：更复杂数据权限：按部门权限，用户属于哪个部门，只能看本部门客户，逻辑写法完全一样，只是 filter 条件变一下。
+
+
+
+
+
+
+注意蓝图 url_prefix：
+登录地址就是 `/api/auth/login`，退出 `/api/auth/logout`
+客户接口 `/api/customer/list`
+
+
+简单一句话：**`init_rbac` 是一次性初始化接口，用来往数据库里自动写入权限、角色、管理员账号这一套基础数据**。
+
+拆开给你讲清楚：
+
+1. 它往 `crm.db` 里面写入：
+   - 权限数据：客户查看、客户新增、客户修改、客户删除
+   - 角色数据：超级管理员、业务员
+   - 用户：`admin`，密码 `123456`，绑定超级管理员角色
+2. 为什么要单独写这个接口？
+SQLite 数据库刚新建出来是空表，**表里一条权限、一个账号都没有**，你根本没法登录、没法控制谁能改数据。
+访问这个接口 = 一键把基础权限环境搭好。
+3. ⚠️它是一次性工具：
+跑成功之后就没用了，**必须注释掉**。
+如果再重复访问：数据库里已经有 admin 账号，会报错主键冲突。

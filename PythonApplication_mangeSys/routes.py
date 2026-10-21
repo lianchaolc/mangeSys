@@ -11,10 +11,44 @@ from flask import Flask, render_template, jsonify
 from models import db, Customer
 # 导入我们封装好的统一返回工具
 from utils import resp_ok, resp_fail
+
+
+
+from flask import Blueprint, request, jsonify, session
+from models import User   # 导入用户模型
+from datetime import datetime
+from flask import jsonify
+from models import db, Permission, Role, User
+from functools import wraps
+auth_bp = Blueprint("auth",__name__,url_prefix="/api/auth")
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 # 1. 【重点】先创建app实例，不然会报app未定义
 app = Flask(__name__)
 import re
+
+
+
+#验证 session 里面权限到底存的是什么（定位权限问题根源）
+def require_perm(perm_key):
+    def decorator(f):
+        @wraps(f)
+        def inner(*args, **kwargs):
+            perms = session.get("permissions", [])
+            user_id = session.get("user_id")
+            if not user_id:
+                return jsonify({"code":401,"msg":"未登录"})
+            # admin超级用户直接放行
+            if "admin" in perms:
+                return f(*args, **kwargs)
+            if perm_key not in perms:
+                return jsonify({"code":403,"msg":"没有操作权限"})
+            return f(*args,**kwargs)
+        return inner
+    return decorator
+#
+
+
+
 
 # 查询客户列表
 #@api_bp.route("/customer/list", methods=["GET"])
@@ -28,21 +62,21 @@ import re
  #   
  #   
 @api_bp.route("/customer/list", methods=["GET"])
+@require_perm("customer:list")
 def customer_list_api():
     #后端防护
     # 最小页码强制=1
 # 还可以拿到总页数，超过最大页就自动变成最后一页
-    page=max(page,1)
+   
     # 获取url参数，给默认值
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("pageSize", 10, type=int)
-
-    # paginate：SQLAlchemy自带分页
-    pagination = Customer.query.order_by(Customer.create_time.desc()).paginate(
-        page=page,
-        per_page=page_size,
-        error_out=False  # page超过最大页数时，不抛异常，返回空
-    )
+    page=max(page,1)
+    page_size = max(page_size, 1)
+  # 分页查询
+    pagination = Customer.query.paginate(page=page, per_page=page_size, error_out=False)
+    records = pagination.items
+    total = pagination.total
     result = []
     for cus in pagination.items:
         result.append(cus.to_dict())
@@ -208,6 +242,7 @@ def customer_list_page():
 
 #3  html 删除数据
 @api_bp.route('/customer/<int:cid>', methods=["DELETE"])
+@require_perm("customer:delete")
 def  del_cutomer(cid):
 # cid = 7，来自url里面的数字
     customer = Customer.query.get(cid)
@@ -215,6 +250,7 @@ def  del_cutomer(cid):
         return jsonify({"msg": "客户不存在"}),404
     db.session.delete(customer)
     db.session.commit()
+    print("当前用户权限：", session.get("permissions"))
     return jsonify({"msg":"删除成功"}),200
 
     return render_template("customer_list.html", pagination=pagination)
@@ -314,3 +350,112 @@ def customer_update(cid):
         db.session.rollback()
         print("更新报错！", str(e))
         return {"code": -1, "msg": "更新失败:" + str(e)}
+
+
+
+
+
+
+
+# 登录相关蓝图，也可以直接写在api_bp里面，看你项目
+auth_bp = Blueprint("auth", __name__,url_prefix="/api/auth")
+
+
+@auth_bp.route("/login", methods=["POST"])
+def login():
+    """
+    用户登录接口
+    登录成功：1.校验账号密码；2.把user_id、用户权限集合存入session
+    session保存在服务端，后续权限装饰器从session读取权限
+    """
+    # 1.接收前端提交账号密码
+    json_data = request.get_json()
+    username = json_data.get("username", "").strip()
+    password = json_data.get("password", "").strip()
+
+    # 简单非空校验
+    if not username or not password:
+        return jsonify({"code": 400, "msg": "用户名和密码不能为空"})
+
+    # 2.数据库查询用户
+    user = User.query.filter_by(username=username).first()
+    # 注意：真实项目密码要加密，这里demo简化判断
+    if not user or user.password != password:
+        return jsonify({"code": 400, "msg": "用户名或者密码错误"})
+
+    # 3.登录成功！写入session（服务端保存）
+    session["user_id"] = user.id      # 当前登录用户id
+
+    # ✅调用模型方法get_perms()获取该用户所有权限标识集合 {customer:list, customer:add...}
+    # 权限集合存入session，后续 @require_permission 装饰器直接读取，不用每次查数据库
+    # 遍历多个角色，收集权限
+    perm_keys = []
+    for role in user.roles:
+        for p in role.permissions:
+            perm_keys.append(p.perm_key)
+
+    session["permissions"] = perm_keys
+    # ============加上这两行打印！！============
+    print(f"user_id: {session.get('user_id')}")
+    print(f"permissions: {session.get('permissions')}")
+    # ========================================
+
+    return jsonify({"code": 0, "msg": "登录成功"})
+
+
+@auth_bp.route("/logout", methods=["GET"])
+def logout():
+    """退出登录，清空session"""
+    session.clear()
+    return jsonify({"code": 0, "msg": "已退出登录"})
+
+
+
+
+# 只执行一次初始化超级管理员
+#@auth_bp.route("/init_rbac",methods=["GET"])
+#def init_rbac():
+ #   """初始化权限、角色、超级管理员，只调用一次！"""
+ #   try:
+        # 先判断是否已经存在admin账号，避免重复创建报错
+   #     exist_admin = User.query.filter_by(username="admin").first()
+    #    if exist_admin:
+    #        return jsonify({"code": -1, "msg": "已经初始化过了，不要重复调用！"})
+
+        # 1.创建权限标识
+    #    p1 = Permission(perm_key="customer:list",perm_name="查看客户列表")
+    #    p2 = Permission(perm_key="customer:add",perm_name="新增客户")
+    #    p3 = Permission(perm_key="customer:edit",perm_name="修改客户")
+    #    p4 = Permission(perm_key="customer:delete",perm_name="删除客户")
+        # admin特殊标识，放行全部权限
+   #     p_admin = Permission(perm_key="admin",perm_name="超级管理员权限")
+
+        # 2.创建admin角色，绑定全部权限
+    #    role_admin = Role(role_name="超级管理员",remark="拥有全部功能权限")
+     #   role_admin.permissions = [p1,p2,p3,p4,p_admin]
+
+        # 3.创建普通业务员角色（只能查看、新增）
+      #  role_staff = Role(role_name="业务员",remark="仅查看、新增客户")
+    #    role_staff.permissions = [p1,p2]
+
+        # 4.创建管理员账号
+    #   admin_user = User(username="admin",password="123456")
+   #     admin_user.roles = [role_admin]
+
+     #   db.session.add_all([p1,p2,p3,p4,p_admin,role_admin,role_staff,admin_user])
+   #     db.session.commit()
+    #    return jsonify({"code":0,"msg":"RBAC初始化成功！账号admin，密码123456"})
+  #  except Exception as e:
+ #       db.session.rollback()
+     #   return jsonify({"code":-1,"msg":f"初始化失败：{str(e)}"})
+#routes.py 加路由，用来渲染登录页面（放在 auth_bp 里）
+@auth_bp.route("/loginPage")
+def login_page():
+    return render_template("login.html")
+@api_bp.route("/customer")
+def customer_page():
+    # 这个路由负责渲染templates里的customer.html模板
+    return render_template("customer.html")
+
+
+

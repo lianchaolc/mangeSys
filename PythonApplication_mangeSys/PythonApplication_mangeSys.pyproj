@@ -33,11 +33,13 @@
     <Compile Include="utils.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Le_point.md" />
     <Content Include="mange.md" />
     <Content Include="requirements.txt" />
     <Content Include="templates\customer.html" />
     <Content Include="templates\dashboard.html" />
     <Content Include="templates\layout.html" />
+    <Content Include="templates\login.html" />
     <Content Include="templates\test.html" />
   </ItemGroup>
   <ItemGroup>

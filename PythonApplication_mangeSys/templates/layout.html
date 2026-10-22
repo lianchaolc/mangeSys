@@ -4,96 +4,161 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>现金押运管理系统</title>
+
+    <!-- 【1】引入layui核心样式，只保留一套版本2.8.18，删除重复layui-src避免版本冲突 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui@2.8.18/dist/css/layui.css">
+    <!-- 【2】引入layui JS脚本 -->
     <script src="https://cdn.jsdelivr.net/npm/layui@2.8.18/dist/layui.js"></script>
+    <!-- 【3】引入图表echarts，用于首页看板图表展示 -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
     <style>
-        html,body{height:100%;margin:0;}
-        .layui-layout-body{height:100%;}
-        .layui-side{width:220px;}
+        /* html、body占满全屏高度，清除默认边距 */
         html,body{
-    margin:0;
-    padding:0;
-}
-.layui-layout-body{
-    margin:0;
-    padding:0;
-}
-.layui-layout-admin .layui-header{
-    top:0 !important;
-    margin-top:0 !important;
-    padding-top:0 !important;
-}
-.layui-layout-header-nav{
-    margin:0 !important;
-    padding:0 !important;
-}
+            height:100%;
+            margin:0;
+            padding:0;
+        }
+        /* layui布局容器占满页面高度 */
+        .layui-layout-body{
+            height:100%;
+        }
+        /* 自定义侧边栏宽度220px */
+        .layui-side{
+            width:220px;
+        }
     </style>
 </head>
-<body class="layui-layout-body layui-layout-fluid">
-<div class="layui-layout">
-    <div class="layui-layout-header layui-bg-blue">
-        <ul class="layui-nav layui-layout-header-nav">
-            <li class="layui-this"><a href="/dashboard">首页看板</a></li>
-            <li><a href="/customer">客户库存管理</a></li>
-            <li><a href="#">款箱管理</a></li>
-            <li><a href="#">押运管理</a></li>
-            <li style="float:right;"><a href="#">管理员｜退出</a></li>
-        </ul>
-    </div>
-    <div class="layui-layout-body">
-        <div class="layui-side layui-bg-black">
-    <div class="layui-side-scroll">
-        <ul class="layui-nav layui-nav-tree" lay-filter="leftMenu">
-            <li class="layui-nav-item">
-                <a href="/dashboard">工作台</a>
-            </li>
-            <li class="layui-nav-item">
-                <a href="javascript:;">系统管理</a>
-                <dl class="layui-nav-child">
-                    <!-- 押运人员管理 -->
-                    <dd>
-                        <a href="/escort">押运人员管理</a>
-                    </dd>
-                    <!-- 网点机构管理 -->
-                    <dd>
-                        <a href="/org">网点机构管理</a>
-                    </dd>
-                    <!-- 你之前的客户管理也可以放这里 -->
-                    <dd>
-                        <a href="/customer">客户管理</a>
-                    </dd>
-                </dl>
-            </li>
-        </ul>
-    </div>
+
+<!-- layui布局body基础class -->
+<body class="layui-layout-body">
+
+<!--
+    layui官方标准后台布局容器 layui-layout-admin
+    ⚠重要：直接子元素只能是 layui-header(头部)、layui-side(侧边栏)、layui-body(主内容)
+    禁止嵌套多余div，否则高度、定位错乱
+-->
+<div class="layui-layout-admin">
+<!-- 顶部头部区域 layui-header，layui-bg-blue设置蓝色背景 -->
+<div class="layui-header layui-bg-blue">
+    <!-- 顶部导航菜单 -->
+    <ul class="layui-nav" lay-filter="topNav">
+        <!-- 去掉写死的 layui-this，交给JS自动判断 -->
+        <li><a href="/dashboard">首页看板</a></li>
+        <li><a href="/customer">客户库存管理</a></li>
+        <li><a href="#">款箱管理</a></li>
+        <li><a href="#">押运管理</a></li>
+        <!-- layui-layout-right layui原生类，实现向右对齐，替代float:right，排版更稳定 -->
+        <li class="layui-layout-right">
+            <a href="javascript:void(0);" onclick="loginout()">{{session.username}}｜退出</a>
+        </li>
+    </ul>
 </div>
 
-        <div class="layui-layout-main">
-            <div class="layui-body">
-                {% block content %}
-                {% endblock %}
-            </div>
+
+    <!-- 左侧侧边栏区域 layui‑side -->
+    <div class="layui-side layui-bg-black">
+        <!-- layui-side-scroll：侧边栏内部滚动容器，菜单过多出现滚动条 -->
+        <div class="layui-side-scroll">
+            <!-- layui-nav-tree：树形侧边菜单，lay‑filter用于js筛选组件 -->
+            <ul class="layui-nav layui-nav-tree" lay-filter="leftMenu">
+                <li class="layui-nav-item">
+                    <a href="/dashboard">工作台</a>
+                </li>
+                <li class="layui-nav-item">
+                    <a href="javascript:;">系统管理</a>
+                    <!-- layui-nav‑child：子菜单下拉列表 -->
+                    <dl class="layui-nav-child">
+                        <dd><a href="/escort">押运人员管理</a></dd>
+                        <dd><a href="/org">网点机构管理</a></dd>
+                        <dd><a href="/customer">客户管理</a></dd>
+                    </dl>
+                </li>
+            </ul>
         </div>
     </div>
+
+    <!-- 主内容显示区域，子页面继承模板后填充block content -->
+    <div class="layui-body">
+        {% block content %}
+        {% endblock %}
+    </div>
+
 </div>
+
 <script>
+// layui模块加载：element处理导航菜单，jquery用于DOM操作
 layui.use(['element', 'jquery'], function(){
     var element = layui.element;
     var $ = layui.jquery;
+
+    // 获取当前浏览器访问路径
     var path = window.location.pathname;
+
+    // 左侧菜单自动高亮逻辑：访问哪个页面，对应菜单激活高亮、展开父菜单
     $(".layui-nav-tree a").each(function(){
         var href = $(this).attr("href");
         if(href === path){
             $(this).parent().addClass("layui-this");
             $(this).closest(".layui-nav-item").addClass("layui-nav-itemed");
         }
+    });
+});
+
+/**
+ * 用户退出登录函数
+ * onclick="loginout()" 头部退出按钮调用
+ * 请求后端退出接口 /api/auth/logout
+ * 返回code=200成功后跳转登录页面
+ */
+function loginout(){
+    console.log("进入退出登录方法");
+    fetch('/api/auth/loginout')
+    // ⚠ res.json()必须带括号，执行解析后端返回的json字符串为js对象，不带括号只会拿到函数本身
+    .then(res=>res.json())
+    .then(ret => {
+        console.log("后端返回数据：", ret);
+        console.log("返回的code：", ret.code);
+        // 判断后端返回状态码，成功跳转登录页
+        if (ret.code === 200) {
+            console.log("【退出】满足条件，准备跳转！");
+            location.href = "/api/auth/loginPage";
+        }
     })
-    // 重点：不要 element.render("nav")
-})
+    // 请求异常捕获（网络错误、接口500等）
+    .catch(err => {
+        alert("请求失败，请重试");
+        console.error(err);
+    })
+}
+layui.use(['element', 'jquery'], function(){
+    var element = layui.element;
+    var $ = layui.jquery;
 
+    // 获取当前浏览器访问路径
+    var path = window.location.pathname;
 
+    // ========== 左侧菜单自动高亮 ==========
+    $(".layui-nav-tree a").each(function(){
+        var href = $(this).attr("href");
+        if(href === path){
+            $(this).parent().addClass("layui-this");
+            $(this).closest(".layui-nav-item").addClass("layui-nav-itemed");
+        }
+    });
+
+    // ========== 新增：顶部导航自动高亮 ==========
+    $("[lay-filter='topNav'] li").each(function(){
+        var aHref = $(this).find('a').attr("href");
+        if(aHref === path){
+            $(this).addClass("layui-this");
+            // 通知element组件刷新导航下划线
+            element.render('nav','topNav');
+        }
+    })
+});
 
 </script>
+
 </body>
 </html>

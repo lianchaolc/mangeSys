@@ -1315,3 +1315,199 @@ SQLite 数据库刚新建出来是空表，**表里一条权限、一个账号�
 3. ⚠️它是一次性工具：
 跑成功之后就没用了，**必须注释掉**。
 如果再重复访问：数据库里已经有 admin 账号，会报错主键冲突。
+
+
+
+
+# 权限拦截模块总结（Flask + SQLAlchemy + Session 方案，你当前这套）
+
+## ✅ 整体目标
+
+实现**RBAC 简易权限控制**：用户 → 角色 → 权限，不同账号只能访问被分配权限对应的接口；
+你实现的效果：test01 只读账号只能看客户列表，不能增 / 改 / 删；管理员账号拥有全部权限。
+
+## ✅ 表结构（三张核心表 + 一张中间多对多表）
+
+1. `user` 用户表：存放账号密码
+2. `role` 角色表：角色名称、备注（字段 `role_name`）
+3. `permission` 权限表：权限标识 `perm_key`，例如 `customer:list`、`customer:add`
+4. `role_permission` 中间关联表（多对多）：`role_id`、`perm_id`，绑定角色和权限
+
+> 
+> 关系：一个用户可以绑定多个角色；一个角色可以绑定多条权限。
+
+## ✅ 执行流程（完整链路）
+
+1. **登录阶段（路由 `/api/auth/login`）**
+
+```
+perm_keys = [p.perm_key for r in user.roles for p in r.permissions]
+session["permissions"] = perm_keys
+session["user_id"] = user.id
+```
+
+> 
+> ⚠️ 关键点：权限**只在登录时加载一次**，修改数据库权限后，必须**重新登录**，session 才会刷新。
+   - 校验用户名、密码
+   - 查询该用户所有角色，遍历取出所有权限标识 `perm_key`
+   - 把权限数组、user_id 存入 `session`（服务端存储）
+2. **权限校验装饰器 `@require_perm("xxx")`（核心）**
+
+```
+def require_perm(perm_key):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            # 判断是否登录
+            if not session.get("user_id"):
+                return jsonify({"code":401, "msg":"请先登录"})
+            # 判断是否拥有该权限
+            if perm_key not in session.get("permissions", []):
+                return jsonify({"code":403, "msg":"权限不足，禁止操作"})
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+```
+3. **接口绑定装饰器**
+在 API 路由上添加装饰器，**路由装饰器必须放在最上面**（顺序不能颠倒）：
+
+```
+@api_bp.route("/api/customer/<int:cid>", methods=["DELETE"])
+@require_perm("customer:delete")
+def del_customer(cid):
+    ...
+```
+4. **前端配套（可选）**
+Jinja2 判断 session 里面的权限，无权限时直接隐藏按钮，减少无效请求：
+
+```
+{% if "customer:delete" in session.permissions %}
+    <button onclick="delCustomer({{ item.id }})">删除</button>
+{% endif %}
+```
+
+## ✅ 你踩过的重点坑（重点回顾）
+
+1. 中间表字段名问题：`role_permission` 权限外键是 `perm_id`，不是 `permission_id`
+2. 权限缓存在 session：数据库改权限，**不重新登录不生效**
+3. 装饰器顺序颠倒会导致校验失效：`@api_bp.route` 在最上方
+4. 多对多中间表 `role_permission` 是角色和权限的桥梁，清空角色权限要操作这张表
+5. 统一返回格式：所有接口返回 `code / msg / data`，前端统一解析
+
+## ✅ 当前方案优缺点
+
+✅ 优点：
+
+- 轻量化，不用额外组件，原生 Flask 就能实现
+- 适配你现有 Flask+Jinja2+Layui 架构，不用改造整套项目
+- 粒度细，按接口控制权限
+
+❌ 局限（后续优化方向）：
+
+1. session 存储，重启服务后 session 失效
+2. 没有单独对 `admin` 超级权限自动放行（现在 admin 也是走普通校验）
+3. 没有权限菜单联动，侧边栏菜单不会自动隐藏（可以下一步做）
+
+## ✅ 测试验证逻辑
+
+- test01 用户：权限 `['customer:list']`
+GET `/api/customer/list` ✅ 放行；POST / PUT / DELETE ❌ 403 拦截
+- 管理员用户：拥有全部权限，所有接口放行
+
+如果你需要，我给你写一份【admin 超级权限自动放行】的升级版装饰器。
+
+
+2026.10.22
+
+
+###
+### `href="javascript:void(0);"` 解释
+
+1. **`void(0)` 是 JS 语法**：执行这段代码，**什么都不做、返回 undefined**
+2. 放在 href 里的作用：
+   - ✅ 保留 `<a>` 标签原本的样式（鼠标放上去变成手型，和普通链接一样）
+   - ✅ **禁止 a 标签默认跳转行为**
+   如果不写这个，只写 `onclick`：点击的时候浏览器会尝试跳转到 `#` 或者别的地址，页面闪一下、顶部刷新。
+
+> 
+> 对比：
+> 
+> 
+> - `<a href="#">`：点击会跳到页面顶部（URL 末尾多出 #，页面抖动），不推荐
+> - `<a href="javascript:void(0);">`：点击**完全不会跳转、不改变地址栏**，只执行 onclick 里面的 `logout()` 函数，就是我们想要的效果
+
+3. 简单一句话总结：
+
+> 
+> 我想用 a 标签的外观，但是**不想让它当跳转链接**，只是用来绑定点击事件，就写 `javascript:void(0);`
+
+
+1. `function logout() {`
+
+> 
+> 定义一个名叫 logout 的函数，点击【退出】的时候就执行这个函数
+
+2. `fetch('/api/auth/logout')`
+
+> 
+> fetch 是浏览器自带工具：向后端这个退出接口 `http://127.0.0.1:5000/api/auth/logout` 发请求
+> 作用：告诉后端，我要退出登录，请清空我的 session
+
+3. `.then(res => res.json())`
+
+- `.then()`：**等上面 fetch 请求收到后端返回数据之后，才执行这里**
+- `res`：后端返回的原始响应对象（里面包含后端给你的数据、状态码）
+- `res.json()`：告诉浏览器：把后端返回的 json 字符串，转成 JS 对象，方便我们读取里面的 code、msg
+
+> 
+> 大白话：拿到后端返回结果，把它变成 JS 能看懂的格式，交给下一段代码
+
+4. `.then(ret => {`
+
+> 
+> 拿到上一步转好的数据，起名字叫 ret，进入判断逻辑
+> ret 就是后端返回的 `{"code":200,"msg":"退出成功"}` 这个对象
+
+5. `if (ret.code === 200) {`
+
+> 
+> 判断：后端返回的 code 是不是等于 200（代表成功）
+> `===` 严格等于，JS 里面推荐用这个判断相等
+
+6. `location.href = "/api/auth/loginPage"`
+
+> 
+> 跳转页面，浏览器跳到登录页面地址
+
+7. `}`  闭合 if
+8. `}`  闭合第二个 then
+9. `.catch(err => {`
+
+> 
+> catch：专门捕获**前面所有步骤出错的情况**
+> 比如后端 500、网络断了、接口 404，就跑到这里执行，err 是错误信息
+
+10. `alert("请求失败，请重试")`
+
+> 
+> 弹窗提示用户：退出请求失败
+
+11. `console.error(err)`
+
+> 
+> 在浏览器 F12 控制台打印错误详情，方便你调试找 bug
+
+12. `}` 闭合 catch
+13. `}` 闭合 logout 函数
+
+---
+
+### 整体流程一句话串起来
+
+点击退出 → 调用 logout 函数 → 请求后端退出接口 → 拿到后端返回的 json → 如果成功，跳登录页；如果网络 / 接口报错，弹窗提示失败。
+
+### 补充两个容易懵的符号
+
+- `=>` 箭头函数，等价于普通 function 简写，就是定义一段回调代码
+- 链式 `.then().then().catch()`：**按顺序排队执行，上一步完事才走下一步**
+
+如果你想要，我给你改成不用箭头函数、最老式好理解的 function 版本对比。

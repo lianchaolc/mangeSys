@@ -382,7 +382,8 @@ def login():
     # 注意：真实项目密码要加密，这里demo简化判断
     if not user or user.password != password:
         return jsonify({"code": 400, "msg": "用户名或者密码错误"})
-
+    perm_keys = [p.perm_key for r in user.roles for p in r.permissions]
+    session["permissions"] = perm_keys
     # 3.登录成功！写入session（服务端保存）
     session["user_id"] = user.id      # 当前登录用户id
 
@@ -403,11 +404,14 @@ def login():
     return jsonify({"code": 0, "msg": "登录成功"})
 
 
-@auth_bp.route("/logout", methods=["GET"])
+@auth_bp.route("/loginout", methods=["GET"])
 def logout():
     """退出登录，清空session"""
     session.clear()
-    return jsonify({"code": 0, "msg": "已退出登录"})
+
+
+    print("我退出登陆")
+    return jsonify({"code": 200, "msg": "已退出登录"})
 
 
 

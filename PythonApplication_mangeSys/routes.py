@@ -25,6 +25,8 @@ api_bp = Blueprint("api", __name__, url_prefix="/api")
 # 1. 【重点】先创建app实例，不然会报app未定义
 app = Flask(__name__)
 import re
+import bcrypt
+
 
 
 
@@ -463,3 +465,49 @@ def customer_page():
 
 
 
+####  2026.10.26
+
+#- 路由：`/register` 渲染注册页面
+#- 接口：`/api/auth/register` 提交注册
+#pip install flask-sqlalchemy bcrypt 先安装依赖（如果没装）
+
+
+
+# ========== 【新增：注册页面路由】 访问 /register 打开注册html页面 ==========
+@auth_bp.route('/register', methods=["GET"])
+def register_page():
+    print("进入注册页面")
+    return render_template("register.html")
+
+# ========== 【新增：注册提交接口，和登录接口配套 /api/auth/register】 ==========
+@auth_bp.route("/register", methods=["POST"])
+def api_register():
+    data = request.get_json()
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+    print("进入注册野提交数据")
+    # 1. 参数校验
+    if not username or not password:
+        return jsonify({"code": 1, "msg": "账号和密码不能为空"})
+    if len(username) < 3:
+        return jsonify({"code": 1, "msg": "账号至少3个字符"})
+    if len(password) < 4:
+        return jsonify({"code": 1, "msg": "密码至少4个字符"})
+
+    # 2. 判断账号是否已经存在
+    exist_user = User.query.filter_by(username=username).first()
+    if exist_user:
+        return jsonify({"code": 1, "msg": "该账号已经被注册"})
+
+    # 3. 密码哈希加密（重点！数据库不存明文密码）
+    pwd_bytes = password.encode("utf-8")
+    salt = bcrypt.gensalt()
+    pwd_hash = bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
+
+    # 4. 写入数据库
+    new_user = User(username=username, password=pwd_hash)
+    db.session.add(new_user)
+    db.session.commit()
+
+    # 5. 返回成功，code=0 和登录保持统一
+    return jsonify({"code": 0, "msg": "注册成功！请去登录"})

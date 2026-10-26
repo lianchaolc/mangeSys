@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>注册账号</title>
+    <style>
+        .box {width:400px;margin:120px auto;background:#fff;padding:30px;border-radius:8px;}
+        .item{margin:16px 0;}
+        input{width:260px;padding:8px;font-size:14px;}
+        button{padding:9px 22px;background:#009688;color:white;border:none;border-radius:4px;cursor:pointer;}
+        .back-login{margin-top:18px;text-align:center;}
+        .back-login a{color:#009688;text-decoration:none;}
+    </style>
+</head>
+<body style="background:#f4f4f4;">
+    <div class="box">
+        <h2 style="text-align:center;">注册账号</h2>
+        <div class="item">
+            <label>账号：</label>
+            <input type="text" id="reg_username" placeholder="请输入账号">
+        </div>
+        <div class="item">
+            <label>密码：</label>
+            <input type="password" id="reg_pwd" placeholder="请输入密码">
+        </div>
+        <div class="item">
+            <label>确认密码：</label>
+            <input type="password" id="reg_pwd2" placeholder="再次输入密码">
+        </div>
+        <div class="item">
+            <button id="regBtn">立即注册</button>
+        </div>
+        <div class="back-login">
+            已有账号？<a href="/">返回登录</a>
+        </div>
+    </div>
+
+<script>
+document.getElementById("regBtn").onclick = async function(){
+    let username = document.getElementById("reg_username").value.trim();
+    let pwd = document.getElementById("reg_pwd").value.trim();
+    let pwd2 = document.getElementById("reg_pwd2").value.trim();
+
+    if(!username || !pwd || !pwd2){
+        alert("全部不能为空");
+        return;
+    }
+    if(pwd !== pwd2){
+        alert("两次密码不一致！");
+        return;
+    }
+
+    let res = await fetch("/api/auth/register",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({username,password:pwd})
+    })
+    let ret = await res.json();
+    if(ret.code === 0){
+        alert(ret.msg);
+        location.href = "/api/auth/loginPage"; // 注册成功跳回登录页
+    }else{
+        alert(ret.msg);
+    }
+}
+</script>
+</body>
+</html>

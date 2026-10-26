@@ -33,6 +33,8 @@ from modules.business import bp as business_bp
 from flask import Flask
 from models import db
 from routes import auth_bp,api_bp
+# 2. 第二步：导入模型（models里面的User、Role等）
+from models import User, Role, Permission, Customer, Escort
 def create_app():
    # """
    # 应用工厂函数（Flask标准写法）

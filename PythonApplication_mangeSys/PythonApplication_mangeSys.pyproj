@@ -40,6 +40,7 @@
     <Content Include="templates\dashboard.html" />
     <Content Include="templates\layout.html" />
     <Content Include="templates\login.html" />
+    <Content Include="templates\register.html" />
     <Content Include="templates\test.html" />
   </ItemGroup>
   <ItemGroup>

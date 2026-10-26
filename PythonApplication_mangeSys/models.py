@@ -90,4 +90,34 @@ class User(db.Model):
                 perm_set.add(p.perm_key)
         return perm_set
 
+
+
+
+
+
+
+
+
+    # 网点
+class Org(db.Model):
+    __tablename__ = "org"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, comment="网点名称")
+    address = db.Column(db.String(200), comment="地址")
+    create_time = db.Column(db.DateTime, default=datetime.now)
+
+# 押运人员
+class Escort(db.Model):
+    __tablename__ = "escort"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False, comment="姓名")
+    phone = db.Column(db.String(20), comment="手机号")
+    id_card = db.Column(db.String(30), comment="身份证号")
+
+    org_id = db.Column(db.Integer, db.ForeignKey("org.id"), comment="所属网点id")
+    # 关系映射
+    org = db.relationship("Org", backref="escorts")
+
+    create_time = db.Column(db.DateTime, default=datetime.now)
+
       

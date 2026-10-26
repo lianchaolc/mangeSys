@@ -4,11 +4,38 @@
     <meta charset="UTF-8">
     <title>系统登录</title>
     <style>
-        .login-box {width:400px;margin:120px auto;background:#fff;padding:30px;border-radius:8px;}
+       .login-box {width:400px;margin:120px auto;background:#fff;padding:30px;border-radius:8px;}
         .item{margin:16px 0;}
         input{width:260px;padding:8px;font-size:14px;}
         button{padding:9px 22px;background:#009688;color:white;border:none;border-radius:4px;cursor:pointer;}
-    </style>
+    /* ========== 新增：样式补充 ========== */
+        .pwd-line{display:flex;align-items:center;gap:10px;}
+        .forget-link{font-size:13px;color:#009688;text-decoration:none;}
+        .remember-line{display:flex;align-items:center;gap:6px;margin:8px 0 0 0;}
+        .remember-line input{width:auto;} /* 新增：取消复选框宽度，修复撑大问题 */
+        .bottom-link{text-align:center;margin-top:20px;font-size:14px;}
+        .register-link{color:#009688;text-decoration:none;}
+     /* 新增：简单动画 */
+        .login-box{
+            opacity:0;
+            transform: translateY(15px);
+            animation: fadeInUp 0.6s ease forwards;
+        }
+        @keyframes fadeInUp {
+            to{opacity:1;transform: translateY(0);}
+        }
+        input:focus{
+            outline: none;
+            border-color:#009688;
+            box-shadow: 0 0 0 2px rgba(0,150,136,0.2);
+            transition: all 0.2s;
+        }
+        button:hover{
+            background:#00796b;
+            transition: background 0.25s;
+        }
+
+        </style>
 </head>
 <body style="background:#f4f4f4;">
     <div class="login-box">
@@ -16,49 +43,103 @@
         <form>
     <div class="item">
         <label>账号：</label>
-        <input type="text" id="username" placeholder="请输入账号">
+        <input type="text" id="username" placeholder="请输入账号"autocomplete="username">
     </div>
     <div class="item">
         <label>密码：</label>
-        <input type="password" id="password" placeholder="请输入密码">
+        <input type="password" id="password" placeholder="请输入密码"autocomplete="current-password">
+        <a href="/forget" class=forget-link>忘记密码</a>
     </div>
+    <!--新增记住密码复选框-->
+    <div class="remember-line">
+    <input type="checkbox" id="remeberPwd">
+    <label>记住密码</lable>
+
+    </div>
+
     <div class="item">
         <button type="button" id="loginBtn">登录</button>
     </div>
 </form>
-
+ <div class="bottom-link">
+  没账号？？<a href="/api/auth/register" class="register-link">立即注册</a>
+ 
+ </div>
     </div>
 
 <script>
 document.getElementById("loginBtn").onclick = async function () {
     let username = document.getElementById("username").value.trim();
     let password = document.getElementById("password").value.trim();
-    if(!username || !password){
+
+    // 先获取复选框
+    let rememberEl = document.getElementById("remember");
+    // 找不到元素就默认 false，不报错
+    let rememberPwd = false;
+    if (rememberEl) {
+        rememberPwd = rememberEl.checked;
+    }
+
+    if (!username || !password) {
         alert("账号密码不能为空");
         return;
     }
-    try{
+
+    try {
         let res = await fetch("/api/auth/login", {
             method: "POST",
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({username, password})
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
         })
-        // 先判断状态码
-        if(!res.ok){
+        if (!res.ok) {
             alert("服务器错误，状态码：" + res.status);
             return;
         }
+
         let ret = await res.json();
-        if(ret.code === 0){
+        if (ret.code === 0) {
+            if (rememberPwd) {
+                localStorage.setItem("save_username", username);
+                localStorage.setItem("save_password", password);
+                localStorage.setItem("remember_checked", "true");
+            } else {
+                localStorage.removeItem("save_username");
+                localStorage.removeItem("save_password");
+                localStorage.removeItem("remember_checked");
+            }
             alert("登录成功");
             location.href = "/customer";
-
-        }else{
+        } else {
             alert(ret.msg);
         }
-    }catch(err){
+    } catch (err) {
         console.error("请求异常：", err)
-        alert("请求失败："+err)
+        alert("请求失败：" + err)
+    }
+}
+
+// 页面加载回填
+window.onload = function () {
+    let rememberEl = document.getElementById("remember");
+    let isChecked = localStorage.getItem("remember_checked");
+    if (isChecked === "true" && rememberEl) {
+        document.getElementById("username").value = localStorage.getItem("save_username");
+        document.getElementById("password").value = localStorage.getItem("save_password");
+        rememberEl.checked = true;
+    }
+}
+
+
+
+// 新增：页面加载时读取本地存储，回填账号密码
+window.onload = function(){
+    const saveUser = localStorage.getItem("save_username");
+    const savePwd = localStorage.getItem("save_password");
+    const rememberChecked = localStorage.getItem("remember_checked");
+    if(rememberChecked === "true"){
+        document.getElementById("rememberPwd").checked = true;
+        document.getElementById("username").value = saveUser || "";
+        document.getElementById("password").value = savePwd || "";
     }
 }
 </script>

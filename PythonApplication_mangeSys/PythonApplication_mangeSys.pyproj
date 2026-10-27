@@ -30,6 +30,9 @@
     <Compile Include="page.py" />
     <Compile Include="PythonApplication_mangeSys.py" />
     <Compile Include="routes.py" />
+    <Compile Include="routes\auth.py" />
+    <Compile Include="routes\route_user.py" />
+    <Compile Include="routes\___init___.py" />
     <Compile Include="utils.py" />
   </ItemGroup>
   <ItemGroup>
@@ -47,6 +50,7 @@
     <Folder Include="instance\" />
     <Folder Include="mdimage\" />
     <Folder Include="modules\" />
+    <Folder Include="routes\" />
     <Folder Include="templates\" />
   </ItemGroup>
   <ItemGroup>

@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="layui-container" style="margin-top: 20px;">
+    <div class="layui-card">
+        <div class="layui-card-header" style="font-size:16px;font-weight:500;">用户管理</div>
+        <div class="layui-card-body">
+            <!-- 搜索区域 -->
+            <div class="layui-form layui-row" style="margin-bottom:18px;">
+                <div class="layui-col-md5">
+                    <input type="text" name="keyword" id="keyword" placeholder="请输入用户名搜索" class="layui-input">
+                </div>
+                <div class="layui-col-md3" style="padding-left:12px;">
+                    <button class="layui-btn layui-btn-normal" id="searchBtn">
+                        <i class="layui-icon layui-icon-search"></i> 搜索
+                    </button>
+                    <button class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+                </div>
+            </div>
+            <!-- 表格 -->
+            <table id="userTable" lay-filter="userTable"></table>
+        </div>
+    </div>
+</div>
+
+<!-- 行内工具栏模板 -->
+<script type="text/html" id="toolBar">
+  <button class="layui-btn layui-btn-xs layui-btn-warm" lay-event="edit">编辑</button>
+  <button class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</button>
+</script>
+
+<script>
+layui.use(['table','jquery'], function(){
+    var table = layui.table;
+    var $ = layui.jquery;
+
+    var tableIns = table.render({
+        elem: '#userTable',
+        url: '/api/user/list',
+        method: 'get',
+        page: true,
+        limit:10,
+        limits:[10,20,50,100],
+        where: {
+            keyword: ""
+        },
+        cols: [[
+            {field:'id', title:'ID', width:100, align:'center'},
+            {field:'username', title:'用户名', align:'center'},
+            {title:'操作', width:180, align:'center', toolbar:'#toolBar'}
+        ]]
+    });
+
+    // 搜索
+    $('#searchBtn').click(function(){
+        var keyword = $('#keyword').val();
+        tableIns.reload({
+            where: { keyword: keyword },
+            page: { curr:1 }
+        })
+    })
+    // 重置
+    $('#resetBtn').click(function(){
+        $('#keyword').val("");
+        tableIns.reload({
+            where: { keyword: "" },
+            page: { curr:1 }
+        })
+    })
+
+    // 监听工具栏按钮（编辑、删除点击事件，后面再写后端）
+    table.on('tool(userTable)', function(obj){
+        var data = obj.data;
+        if(obj.event === 'edit'){
+            layer.msg('编辑用户：'+data.username);
+        }else if(obj.event === 'del'){
+            layer.confirm('确定删除【'+data.username+'】？', function(index){
+                layer.msg('删除逻辑待开发');
+                layer.close(index);
+            });
+        }
+    })
+})
+</script>
+{% endblock %}
+

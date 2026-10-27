@@ -26,13 +26,16 @@ from flask import request
 #配置简单日志(生产环境用文件日志)
 logging.basicConfig(level=logging.ERROR)
 # api_bp 在你的api文件中
-from routes import api_bp
+
 from modules.business import bp as business_bp
 
 
 from flask import Flask
 from models import db
 from routes import auth_bp,api_bp
+
+from route_modules.auth import auth_bp
+from route_modules.route_user import user_bp
 # 2. 第二步：导入模型（models里面的User、Role等）
 from models import User, Role, Permission, Customer, Escort
 def create_app():
@@ -72,6 +75,10 @@ def create_app():
     app.register_blueprint(business_bp)
 
     app.register_blueprint(auth_bp)
+
+
+    app.register_blueprint(user_bp)  # 用户蓝图在这里注册
+ 
 # 404状态码处理器：访问不存在的路由/接口时触发
 # 属于HTTP状态捕获，不是代码抛出的Exception异常，和上面全局兜底是两套独立逻辑
     @app.errorhandler(404)
@@ -157,7 +164,9 @@ app = create_app()
 #全局异常处理# 全局兜底异常处理器：捕获所有没有单独处理的未知异常（代码bug、数据库意外报错等）
 # 作用：防止Flask返回默认HTML报错页面，统一返回JSON格式；数据库异常时回滚会话，避免会话锁死
 
-
+@app.route("/api/auth/userPage")
+def tmp_userpage():
+    return "临时路由能访问！"
 
 
 if __name__ == "__main__":

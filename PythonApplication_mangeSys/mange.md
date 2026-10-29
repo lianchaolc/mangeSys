@@ -1737,3 +1737,127 @@ python app.py
 这个命令开启后，本次运行不会生成 `__pycache__`
 
 现在先删掉缓存文件夹，重启试试。
+
+
+
+
+
+
+
+
+10.28
+我用大白话拆开讲，先分清三个包各自是干嘛的，再讲组合在一起解决什么问题，结合你刚才的押运系统例子。
+
+# 1. flask
+
+**Web 框架，整个项目的底座**
+作用：写网站、接口，接收浏览器 / 前端发来的请求，返回数据。
+没有 flask，就没有 web 服务，没法写 `/add_org`、`/query` 这种接口。
+
+> 
+> 类比：房子的框架。
+
+# 2. flask-sqlalchemy
+
+ORM 工具（重点！），操作数据库用的
+原生操作数据库是写 **SQL 语句**，比如：
+
+```
+SELECT * FROM escort WHERE name like '%张%';
+INSERT INTO org(name) VALUES ('河北网点');
+```
+
+SQLAlchemy 帮你把【表、行】变成 Python 的类和对象，**不用手写大量 SQL**。
+
+- 类 = 数据库表（Org 类 → org 表）
+- 对象 = 表里的一行数据
+- 属性 = 字段
+
+```
+# 不用写SQL，直接Python代码新增一条网点
+o = Org(name="河北网点")
+db.session.add(o)
+db.session.commit()
+```
+
+它额外支持：
+✅ 一对多、外键、relationship 关联
+✅ where 过滤、like 模糊查询、排序
+✅ 字段约束：unique 唯一、默认值、自动更新时间
+
+> 
+> 类比：房子里的储物柜，帮你规整、存取东西，不用自己徒手拼 SQL。
+
+⚠️ 注意：它只是 ORM，**不会自动帮你修改数据库表结构**！
+比如你写完模型，新增一个 `gender` 性别字段，直接运行代码，数据库里的表不会自动多出这一列。
+👉 这个痛点，就是 flask-migrate 解决的。
+
+# 3. flask-migrate
+
+数据库迁移工具，基于 Alembic，专门配合 flask-sqlalchemy
+作用：**跟踪你的模型改动，自动生成升级脚本，同步表结构**
+场景举例：
+
+1. 一开始你写好 Org、Escort 模型，执行迁移，数据库生成两张表
+2. 后面需求变了：要给押运员加 `gender` 性别字段
+   - 不用手动打开数据库软件执行 ALTER TABLE 改表
+   - 不用删库、清空数据重建（删库会把所有押运员、网点数据全部弄丢！）
+   - 只需要两条命令：
+   ```
+   flask db migrate -m "增加性别字段"  # 对比：模型和现有数据库有什么差别，生成脚本
+   flask db upgrade                   # 执行脚本，在数据库里新增这一列，原有数据保留
+   ```
+
+还可以回滚：改坏了，`flask db downgrade` 恢复到上一个版本。
+
+> 
+> 类比：装修图纸版本管理，每次改图纸（改模型），它帮你记录改动，安全修改房子格局，不砸掉整栋房子。
+
+---
+
+# 一句话总结三者关系
+
+- **flask**：跑 web 接口，接收请求
+- **flask-sqlalchemy**：用 Python 对象操作数据库，代替手写 SQL，定义表、一对多关系、约束
+- **flask-migrate**：管理表结构变更，改模型之后安全更新数据库，**不丢数据**
+
+## 最简流程串起来
+
+1. 用 Flask 搭 web 服务
+2. 用 Flask-SQLAlchemy 写模型（Org、Escort，定义一对多、字段）
+3. 用 Flask-Migrate 命令：把模型同步成数据库表；后续改模型，持续更新表结构
+4. 接口里用 db.session 做增删改查
+
+## 举个反面例子，不用这一套会怎样
+
+只用 flask + 原生 pymysql：
+
+- 所有新增、查询、关联都要手写 SQL 字符串，容易写错、注入漏洞
+- 一对多关联要自己写 JOIN，非常麻烦
+- 修改表字段，必须手动写 ALTER TABLE，上线生产很容易误操作丢数据
+
+
+2026.10.29
+ #### 无法打印sql
+ `app.run()` 是启动服务的命令，**程序走到 `app.run()` 就卡住、开始监听网页请求了，下面这行代码根本不会执行！**
+所以 `SQLALCHEMY_ECHO=True` 永远没有生效，自然不打印 SQL
+
+
+## ✅ 正确写法（放到 create_app 里面，创建 app 的时候就配置）
+
+找到你的 `create_app()` 函数，在函数内部写：
+
+```
+def create_app():
+    app = Flask(__name__)
+
+    # ========= 放在这里！！创建app之后、db初始化之前 =========
+    app.config["SQLALCHEMY_ECHO"] = True
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///instance/crm.db"
+    # =======================================================
+
+    db.init_app(app)
+
+    # 后面注册蓝图、其他代码...
+    return app
+```

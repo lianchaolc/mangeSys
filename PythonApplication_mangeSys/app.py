@@ -33,8 +33,10 @@ from modules.business import bp as business_bp
 from flask import Flask
 from models import db
 from routes import auth_bp,api_bp
+# 来自 auth.py（你刚改好的这套）
+from route_modules.auth import auth_bp_file
 
-from route_modules.auth import auth_bp
+
 from route_modules.route_user import user_bp
 # 2. 第二步：导入模型（models里面的User、Role等）
 from models import User, Role, Permission, Customer, Escort
@@ -50,6 +52,9 @@ def create_app():
     app.secret_key = "supersecretkey123456"
 # 读取数据库配置
     app.config.from_pyfile("config.py")
+
+     # 开启打印执行的SQL语句，开发环境打开，上线删掉
+    app.config["SQLALCHEMY_ECHO"] = True
     db.init_app(app)
 
 
@@ -78,6 +83,7 @@ def create_app():
 
 
     app.register_blueprint(user_bp)  # 用户蓝图在这里注册
+    app.register_blueprint(auth_bp_file)
  
 # 404状态码处理器：访问不存在的路由/接口时触发
 # 属于HTTP状态捕获，不是代码抛出的Exception异常，和上面全局兜底是两套独立逻辑
@@ -179,6 +185,7 @@ if __name__ == "__main__":
     # 启动内置开发服务器
     # debug=True：开发模式，代码改动自动重启、页面显示报错详情；线上一定要关掉debug
     app.run(debug=True)
+   
 
 
 

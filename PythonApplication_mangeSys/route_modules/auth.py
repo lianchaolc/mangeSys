@@ -23,12 +23,12 @@ from flask import Blueprint
 
 print("==== auth.py 被加载执行了 ====")
 
-auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
+auth_bp_file = Blueprint("auth_file", __name__, url_prefix="/api/authfile")
 
-@auth_bp.route("/test")
+@auth_bp_file.route("/test")
 def test():
     return "✅ auth蓝图成功加载！"
 
-@auth_bp.route("/userPage")
+@auth_bp_file.route("/userPage")
 def user_page():
     return "✅ userPage 路由正常"

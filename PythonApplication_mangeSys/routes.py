@@ -11,7 +11,7 @@ from flask import Flask, render_template, jsonify
 from models import db, Customer
 # 导入我们封装好的统一返回工具
 from utils import resp_ok, resp_fail
-
+from sqlalchemy.orm import selectinload
 
 
 from flask import Blueprint, request, jsonify, session
@@ -26,8 +26,8 @@ api_bp = Blueprint("api", __name__, url_prefix="/api")
 app = Flask(__name__)
 import re
 import bcrypt
-
-
+from werkzeug.security import check_password_hash
+from utils import require_permission
 
 
 #验证 session 里面权限到底存的是什么（定位权限问题根源）
@@ -380,30 +380,55 @@ def login():
         return jsonify({"code": 400, "msg": "用户名和密码不能为空"})
 
     # 2.数据库查询用户
-    user = User.query.filter_by(username=username).first()
+    #user = User.query.filter_by(username=username).first()
+
+    ###改懒加载
+    user = User.query.options(
+    selectinload(User.roles).selectinload(Role.permissions)
+).filter(User.username == username).first()
+  #  if user:
+#     session["permissions"] = user.get_perms()
+
     # 注意：真实项目密码要加密，这里demo简化判断
-    if not user or user.password != password:
-        return jsonify({"code": 400, "msg": "用户名或者密码错误"})
-    perm_keys = [p.perm_key for r in user.roles for p in r.permissions]
-    session["permissions"] = perm_keys
+    #if not user or user.password != password:
+    #    return jsonify({"code": 400, "msg": "用户名或者密码错误"})
+   # perm_keys = [p.perm_key for r in user.roles for p in r.permissions]
+    #session["permissions"] = perm_keys
     # 3.登录成功！写入session（服务端保存）
     session["user_id"] = user.id      # 当前登录用户id
 
     # ✅调用模型方法get_perms()获取该用户所有权限标识集合 {customer:list, customer:add...}
     # 权限集合存入session，后续 @require_permission 装饰器直接读取，不用每次查数据库
     # 遍历多个角色，收集权限
-    perm_keys = []
-    for role in user.roles:
-        for p in role.permissions:
-            perm_keys.append(p.perm_key)
+   # perm_keys = []
+    #for role in user.roles:
+    #    for p in role.permissions:
+    #        perm_keys.append(p.perm_key)
 
-    session["permissions"] = perm_keys
-    # ============加上这两行打印！！============
+   # session["permissions"] = perm_keys
+   # session["permissions"] = user.get_perms()
+
+
+   # 校验账号密码
+    if not user or user.password != password:
+      return jsonify({"code": 400, "msg": "用户名或者密码错误"})
+
+# 登录成功！set转list存入session，解决json序列化报错
+    session["permissions"] = list(user.get_perms())
+    session["user_id"] = user.id
+
+# 打印调试
     print(f"user_id: {session.get('user_id')}")
     print(f"permissions: {session.get('permissions')}")
-    # ========================================
 
     return jsonify({"code": 0, "msg": "登录成功"})
+
+    # ============加上这两行打印！！============
+   # print(f"user_id: {session.get('user_id')}")
+    #print(f"permissions: {session.get('permissions')}")
+    # ========================================
+
+    #return jsonify({"code": 0, "msg": "登录成功"})
 
 
 @auth_bp.route("/loginout", methods=["GET"])
@@ -459,6 +484,7 @@ def logout():
 def login_page():
     return render_template("login.html")
 @api_bp.route("/customer")
+@require_permission("customer:list")   # ← 加上这行
 def customer_page():
     # 这个路由负责渲染templates里的customer.html模板
     return render_template("customer.html")
@@ -511,3 +537,61 @@ def api_register():
 
     # 5. 返回成功，code=0 和登录保持统一
     return jsonify({"code": 0, "msg": "注册成功！请去登录"})
+
+
+
+
+##### 一、模型（Model）进阶（你 RBAC 权限、多对多必用）  我要验证的是这个
+#测试代码
+@auth_bp.route("/test_rbac")
+def test_rbac():
+    from sqlalchemy.orm import selectinload
+    user = User.query.options(
+        selectinload(User.roles).selectinload(Role.permissions)
+    ).filter(User.id == 2).first()
+    if not user:
+        return {"msg":"用户不存在"}
+    return {
+        "username": user.username,
+        "roles": [r.role_name for r in user.roles],
+        "permissions": list(user.get_perms())
+    }
+
+
+
+@auth_bp.route("/check_rbac")
+def check_rbac():
+    from sqlalchemy.orm import selectinload
+    from models import User
+
+    # 1. 带预加载查询
+    user = User.query.options(
+        selectinload(User.roles).selectinload(Role.permissions)
+    ).filter(User.id == 2).first()
+
+    if not user:
+        return {"结果": "❌ 用户不存在，请核对user表id=2"}
+
+    # 测试多对多读取
+    role_list = user.roles
+    if not role_list:
+        return {"结果": "⚠️ 多对多：用户没有绑定角色，检查user_role中间表"}
+
+    perm_list = []
+    for r in role_list:
+        perm_list.extend(r.permissions)
+
+    if not perm_list:
+        return {"结果": "⚠️ 多对多：角色没有绑定权限，检查role_permission中间表"}
+
+    perm_keys = user.get_perms()
+
+    return {
+        "结果": "✅ 多对多模型正常，关联数据可以读取",
+        "username": user.username,
+        "roles": [r.role_name for r in role_list],
+        "perm_keys": list(perm_keys),
+        "提示": "去控制台看SQL日志，一共3条=预加载selectinload生效"
+    }
+
+

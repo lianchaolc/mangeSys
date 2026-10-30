@@ -19,6 +19,12 @@
             </div>
             <!-- 表格 -->
             <table id="userTable" lay-filter="userTable"></table>
+            <select id="myPageSize">
+  <option value="10">10条/页</option>
+  <option value="20">20条/页</option>
+  <option value="50">50条/页</option>
+  <option value="100">100条/页</option>
+</select>
         </div>
     </div>
 </div>
@@ -37,6 +43,7 @@ layui.use(['table','jquery'], function(){
     var tableIns = table.render({
         elem: '#userTable',
         url: '/api/user/list',
+        id: 'userTableId', // ✅ 这个id是给表格起名字，后面重载要用，不能丢！
         method: 'get',
         page: true,
         limit:10,
@@ -49,6 +56,21 @@ layui.use(['table','jquery'], function(){
             {field:'username', title:'用户名', align:'center'},
             {title:'操作', width:180, align:'center', toolbar:'#toolBar'}
         ]]
+
+    });
+    // ==========【移到render外面！】下拉每页条数切换事件 ==========
+// ========== 修复：切换每页条数事件 ==========
+    $('#myPageSize').on('change', function(){
+        let pageSize = parseInt($(this).val());
+        console.log("切换每页条数：", pageSize);
+        // limit 与 page 平级！！
+        table.reload('userTableId', {
+          
+            page: {
+                curr: 1,
+                limit: pageSize,
+            }
+        });
     });
 
     // 搜索

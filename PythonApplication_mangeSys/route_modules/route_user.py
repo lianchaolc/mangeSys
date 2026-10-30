@@ -24,7 +24,8 @@ def user_list():
         return jsonify({"code":403, "msg":"无权限"}), 403
 
     page = request.args.get("page", 1, type=int)
-    page_size = request.args.get("pageSize", 10, type=int)
+   # ✅ 改成读取 limit，默认10
+    page_size = request.args.get("limit", 10, type=int)
     keyword = request.args.get("keyword", "", type=str).strip()
 
     query = User.query

@@ -1,15 +1,25 @@
 {% extends "layout.html" %}
 {% block content %}
-
 <div class="layui-container" style="margin-top: 20px;">
     <div class="layui-card">
-        <div class="layui-card-header" style="font-size:16px;font-weight:500;">用户管理</div>
+       <div class="layui-card-header" style="font-size:16px;font-weight:500;display:flex;justify-content:space-between;align-items:center;">
+    <span>用户管理</span>
+    <button class="layui-btn layui-btn-sm layui-btn-normal" id="addUserBtn">
+        <i class="layui-icon layui-icon‑add"></i> 新增用户
+    </button>
+</div>
         <div class="layui-card-body">
             <!-- 搜索区域 -->
             <div class="layui-form layui-row" style="margin-bottom:18px;">
                 <div class="layui-col-md5">
                     <input type="text" name="keyword" id="keyword" placeholder="请输入用户名搜索" class="layui-input">
                 </div>
+                <div class="layui-col-md3">
+                <input type="text" name="start_time" id="start_time" class="layui-input" placeholder="创建开始时间">
+                 </div>
+                <div class="layui-col-md3">
+                 <input type="text" name="end_time" id="end_time" class="layui-input" placeholder="创建结束时间">
+                  </div>
                 <div class="layui-col-md3" style="padding-left:12px;">
                     <button class="layui-btn layui-btn-normal" id="searchBtn">
                         <i class="layui-icon layui-icon-search"></i> 搜索
@@ -35,74 +45,132 @@
   <button class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</button>
 </script>
 
+<!-- 编辑弹窗模板，后续编辑功能使用 -->
+<script type="text/html" id="editTpl">
+<div class="layui-form" lay-filter="editForm" style="padding:20px 10px;">
+    <div class="layui-form-item">
+        <label class="layui-form-label">用户名</label>
+        <div class="layui-input-block">
+            <input type="hidden" name="id">
+            <input type="text" name="username" class="layui-input">
+        </div>
+    </div>
+</div>
+</script>
+
 <script>
-layui.use(['table','jquery'], function(){
+// 只保留 1 个顶层 layui.use，一次性加载全部模块
+layui.use(['table','jquery','form','laydate','layer'], function(){
     var table = layui.table;
     var $ = layui.jquery;
+    var form = layui.form;
+    var laydate = layui.laydate;
+    var layer = layui.layer;
 
+    // 时间选择器，保存实例对象，用于clear清空
+    var startDateIns = laydate.render({
+        elem: '#start_time',
+        type: 'datetime',
+        format: 'yyyy-MM-dd HH:mm:ss',
+        done:function(val){
+            endDateIns.config.min = val;
+        }
+    })
+    var endDateIns = laydate.render({
+        elem: '#end_time',
+        type: 'datetime',
+        format: 'yyyy-MM-dd HH:mm:ss',
+        done:function(val){
+            startDateIns.config.max = val;
+        }
+    })
+
+    //表格渲染
     var tableIns = table.render({
         elem: '#userTable',
         url: '/api/user/list',
-        id: 'userTableId', // ✅ 这个id是给表格起名字，后面重载要用，不能丢！
+        id: 'userTableId',
         method: 'get',
         page: true,
         limit:10,
         limits:[10,20,50,100],
         where: {
-            keyword: ""
+            keyword: "",
+            start_time:"",
+            end_time:""
         },
         cols: [[
             {field:'id', title:'ID', width:100, align:'center'},
             {field:'username', title:'用户名', align:'center'},
+            {field:'role_names', title:'角色权限', align:'center'},
+            {field:'create_time', title:'创建时间', align:'center'},
             {title:'操作', width:180, align:'center', toolbar:'#toolBar'}
         ]]
-
     });
-    // ==========【移到render外面！】下拉每页条数切换事件 ==========
-// ========== 修复：切换每页条数事件 ==========
+
+    //切换每页条数
     $('#myPageSize').on('change', function(){
         let pageSize = parseInt($(this).val());
-        console.log("切换每页条数：", pageSize);
-        // limit 与 page 平级！！
         table.reload('userTableId', {
-          
             page: {
                 curr: 1,
-                limit: pageSize,
+                limit: pageSize
             }
         });
     });
 
-    // 搜索
+    //搜索
     $('#searchBtn').click(function(){
         var keyword = $('#keyword').val();
+        var st = $('#start_time').val();
+        var et = $('#end_time').val();
         tableIns.reload({
-            where: { keyword: keyword },
-            page: { curr:1 }
-        })
-    })
-    // 重置
-    $('#resetBtn').click(function(){
-        $('#keyword').val("");
-        tableIns.reload({
-            where: { keyword: "" },
+            where: {
+                keyword: keyword,
+                start_time: st,
+                end_time: et
+            },
             page: { curr:1 }
         })
     })
 
-    // 监听工具栏按钮（编辑、删除点击事件，后面再写后端）
+    //重置按钮，使用实例对象清空日历
+    $('#resetBtn').click(function(){
+        $('#keyword').val("");
+        startDateIns.clear();
+        endDateIns.clear();
+        tableIns.reload({
+            where: { keyword: "",start_time:"",end_time:"" },
+            page: { curr:1 }
+        })
+    })
+
+    //监听表格编辑删除按钮
     table.on('tool(userTable)', function(obj){
-        var data = obj.data;
+        var row = obj.data;
         if(obj.event === 'edit'){
-            layer.msg('编辑用户：'+data.username);
+            layer.open({
+                type:1,
+                title:"编辑用户",
+                area:["520px","360px"],
+                content:$("#editTpl").html(),
+                success:function(layero, index){
+                    form.val('editForm', row);
+                }
+            })
         }else if(obj.event === 'del'){
-            layer.confirm('确定删除【'+data.username+'】？', function(index){
-                layer.msg('删除逻辑待开发');
+            layer.confirm('确定删除【'+row.username+'】？', function(index){
+                layer.msg("删除逻辑待开发");
                 layer.close(index);
             });
         }
     })
+
+    //新增按钮
+    $('#addUserBtn').click(function(){
+        layer.msg("新增用户待开发");
+    })
 })
 </script>
-{% endblock %}
 
+{% endblock %}

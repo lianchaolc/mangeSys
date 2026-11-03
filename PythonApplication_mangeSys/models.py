@@ -40,7 +40,7 @@ class User(db.Model):
     real_name = db.Column(db.String(50))
     password = db.Column(db.String(100))
     create_time = db.Column(db.DateTime, default=datetime.now)
-
+    hire_date = db.Column(db.Date, nullable=True)  # ✅ 新增，日期类型，允许为空
 
     #==========={新增权限功能}
     # ========== 【中间表：角色 ↔ 权限，纯中间表，没有额外字段】==========

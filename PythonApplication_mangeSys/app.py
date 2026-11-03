@@ -40,6 +40,12 @@ from route_modules.auth import auth_bp_file
 from route_modules.route_user import user_bp
 # 2. 第二步：导入模型（models里面的User、Role等）
 from models import User, Role, Permission, Customer, Escort
+
+from flask_migrate import Migrate  # 新增导入
+
+from route_modules.backup import bp as backup_bp # 备份蓝图（数据库）
+
+
 def create_app():
    # """
    # 应用工厂函数（Flask标准写法）
@@ -56,7 +62,7 @@ def create_app():
      # 开启打印执行的SQL语句，开发环境打开，上线删掉
     app.config["SQLALCHEMY_ECHO"] = True
     db.init_app(app)
-
+    migrate = Migrate(app, db) # 新增这一行，绑定app和db
 
 
    # 配置数据库连接地址，使用sqlite，数据库文件在instance/crm.db
@@ -84,6 +90,8 @@ def create_app():
 
     app.register_blueprint(user_bp)  # 用户蓝图在这里注册
     app.register_blueprint(auth_bp_file)
+
+    app.register_blueprint(backup_bp)#数据库的注册蓝图
  
 # 404状态码处理器：访问不存在的路由/接口时触发
 # 属于HTTP状态捕获，不是代码抛出的Exception异常，和上面全局兜底是两套独立逻辑

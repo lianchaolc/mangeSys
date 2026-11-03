@@ -54,3 +54,17 @@ instance/
 
 # 调试
 .env
+# sqlite备份文件
+backup/*.db
+instance/*.db
+
+# python缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 日志、临时文件
+*.log
+*.tmp
+

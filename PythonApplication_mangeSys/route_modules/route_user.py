@@ -69,3 +69,28 @@ def add_test_user():
             db.session.add(u)
     db.session.commit()
     return "✅ 100条测试用户添加完成，去刷新用户管理页面！"
+    ###2026.10.3
+    ##蓝图前缀：`user_bp`，一般注册的时候是 `url_prefix="/user"`
+    ####所以接口完整地址：`/user/add`   新增人员
+
+
+@user_bp.route("/add",methods=["post"])
+def user_add():
+    from app import db
+    from models import User
+        # 接收表单提交（form表单，不是json
+    username = request.form.get("username")
+    password = request.form.get("password")
+    role = request.form.get("role")
+    phone = request.form.get("phone")
+    status = request.form.get("status")
+    u = User()
+    u.username = username
+    u.password = password
+    u.role = role
+    u.phone = phone
+    u.status = status
+    db.session.add(u)
+    db.session.commit()
+
+    return jsonify({"code": 0, "msg": "新增成功"})

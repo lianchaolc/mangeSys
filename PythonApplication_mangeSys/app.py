@@ -193,7 +193,10 @@ if __name__ == "__main__":
     # 启动内置开发服务器
     # debug=True：开发模式，代码改动自动重启、页面显示报错详情；线上一定要关掉debug
     app.run(debug=True)
-   
+  
+    print("===== 所有注册路由 =====")
+    for rule in app.url_map.iter_rules():
+        print(rule.rule)
 
 
 

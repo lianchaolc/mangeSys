@@ -957,3 +957,4 @@ DBeaver、Navicat、DataGrip：图形界面点一点增加字段。
 👉 直接用原生 Alembic（命令和 flask-migrate 几乎一样）
 4. 不想学命令行，只想临时改表
 👉 DBeaver 图形界面，但是记住：**没有版本记录，上线很麻烦**
+

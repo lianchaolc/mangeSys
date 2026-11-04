@@ -179,3 +179,93 @@ yes: function (index, layero) {
 这里缺少报错
 
 400 w未找到  大多数是缩进问题
+
+
+2026..11.5
+
+
+@@@@@@##############代码备份
+ file_list = request.files.getlist("files")
+    if not file_list or file_list[0].filename == "":
+        return jsonify({"code":400, "msg":"file type no select"}), 400
+
+    result_list = []
+    uploader_id = request.uid if hasattr(request, "uid") else 0
+
+    try:
+        for file in file_list:
+            if not file.filename:
+                continue
+            if not allowed_file(file.filename):
+                result_list.append({"filename":file.filename, "status":"fail", "msg":"can't file type"})
+                continue
+
+            safe_original_name = secure_filename(file.filename)
+            parts = safe_original_name.rsplit(".", 1)
+            if len(parts) >= 2:
+                ext = parts[1].lower()
+            else:
+                ext = ""
+
+           
+            # 生成唯一保存文件名（uuid + 文件后缀）
+            save_name = generate_unique_save_name(ext)
+            # 拼接文件在磁盘上的完整绝对保存路径
+            save_path = get_full_save_path(save_name)
+            print("✅ filepath===============：", save_path)
+            # 提取保存路径中的目录部分
+            save_dir = os.path.dirname(save_path)
+            # 如果目录不存在则自动创建，exist_ok=True 目录已存在时不报错
+            os.makedirs(save_dir, exist_ok=True)
+
+
+            file_content = file.read()
+            file_size = len(file_content)
+            file_hash = hashlib.sha256(file_content).hexdigest()
+
+            exist_record = db.session.query(FileRecord).filter_by(file_hash=file_hash, is_deleted=False).first()
+            if exist_record:
+                result_list.append({
+                    "original_name": safe_original_name,
+                    "save_name": exist_record.save_name,
+                    "file_url": exist_record.file_url,
+                    "file_size": exist_record.file_size,
+                    "file_hash": file_hash,
+                    "status":"success",
+                    "msg":"up success ,file  alealy"
+                })
+                continue
+
+            # 写磁盘
+            with open(save_path, "wb") as f:
+                f.write(file_content)
+
+            file_url = get_file_access_url(save_name)
+            new_record = FileRecord(
+                original_name = safe_original_name,
+                save_name = save_name,
+                file_url = file_url,
+                file_size = file_size,
+                ext = ext,
+                file_hash = file_hash,
+                uploader_id = uploader_id
+            )
+            db.session.add(new_record)   # ✅只add，循环内不commit
+
+            result_list.append({
+                "original_name": safe_original_name,
+                "save_name": save_name,
+                "file_url": file_url,
+                "file_size": file_size,
+                "file_hash": file_hash,
+                "status":"success"
+            })
+
+        # =========循环全部结束，外面统一commit一次=========
+        db.session.commit()
+
+    except Exception as e:
+        db.session.rollback()
+        raise e
+
+    return jsonify({"code":200, "msg":"file many success", "data":result_list})

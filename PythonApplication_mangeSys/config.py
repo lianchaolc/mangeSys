@@ -25,3 +25,25 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 # 密钥，Flask内部用来做加密、签名，比如后面做登录、token会用到
 # 随便写一串复杂字符串就行，不要泄露给别人
 SECRET_KEY = "crm-api-2026-secret"
+###2026.11.4
+# -*- coding: utf-8 -*-
+import os
+
+# 所有配置统一放在这个盒子里，其他代码会自动读取，直接用不用改
+class Config:
+    # ========== 你项目原来的基础配置，已经按你现在的项目配好了，不用动 ==========
+    SECRET_KEY = "dev_secret_key_dont_change_when_test"
+    # 数据库地址就是你现在用的crm.db，完全不用改，不会丢数据
+    SQLALCHEMY_DATABASE_URI = "sqlite:///crm.db"
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # ========== 文件上传的配置，全部配好了，不用动 ==========
+    # 单文件最大100MB
+    MAX_CONTENT_LENGTH = 100 * 1024 * 1024
+    # 文件自动存到你项目static/upload文件夹里，路径绝对不会错
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "upload")
+    # 大文件分片临时目录
+    CHUNK_TEMP_FOLDER = os.path.join(UPLOAD_FOLDER, "temp_chunks")
+    # 允许上传的文件类型白名单
+    ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "pdf", "doc", "docx", "xls", "xlsx","webp"}
+

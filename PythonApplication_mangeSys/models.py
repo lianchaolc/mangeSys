@@ -120,4 +120,56 @@ class Escort(db.Model):
 
     create_time = db.Column(db.DateTime, default=datetime.now)
 
+    #### 文件上传
+from datetime import datetime, timezone
+from sqlalchemy import func
+
+class FileRecord(db.Model):
+    __tablename__ = 'file_record'
+
+    id = db.Column(db.Integer, primary_key=True, comment='主键')
+    original_name = db.Column(db.String(255), nullable=False, comment='原始文件名')
+    save_name = db.Column(db.String(255), nullable=False, unique=True,
+                          comment='存储文件名(UUID)')
+    file_url = db.Column(db.String(500), nullable=False, comment='访问地址')
+    file_size = db.Column(db.BigInteger, nullable=False, default=0,
+                          comment='文件大小(字节)')
+    ext = db.Column(db.String(20), index=True, comment='扩展名(小写,不带点)')
+    content_type = db.Column(db.String(100), comment='MIME类型')
+    file_hash = db.Column(db.String(64), index=True, comment='MD5/SHA256,用于秒传去重')
+
+    uploader_id = db.Column(db.Integer, index=True, comment='上传人ID')
+    biz_type = db.Column(db.String(50), index=True, comment='业务类型')
+    biz_id = db.Column(db.Integer, comment='业务主键')
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False, comment='软删除')
+
+    create_time = db.Column(
+        db.DateTime, nullable=False, index=True,
+        default=lambda: datetime.now(timezone.utc),  # ORM 层默认值, 统一 UTC
+        server_default=func.now()                     # 绕过 ORM 时也有默认值
+    )
+    update_time = db.Column(
+        db.DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
+    )
+
+    def __repr__(self):
+        return f'<FileRecord id={self.id} name={self.original_name!r}>'
+
+    def to_dict(self):
+     return {
+        "id": self.id,
+        "original_name": self.original_name,
+        "save_name": self.save_name,
+        "file_url": self.file_url,
+        "file_size": self.file_size,
+        "ext": self.ext,
+        "file_hash": self.file_hash,
+        "create_time": self.create_time.strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+
+
+
       

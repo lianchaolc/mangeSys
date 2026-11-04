@@ -45,6 +45,7 @@ from flask_migrate import Migrate  # 新增导入
 
 from route_modules.backup import bp as backup_bp # 备份蓝图（数据库）
 
+from route_modules.route_upload import upload_bp# 文件上传
 
 def create_app():
    # """
@@ -92,6 +93,8 @@ def create_app():
     app.register_blueprint(auth_bp_file)
 
     app.register_blueprint(backup_bp)#数据库的注册蓝图
+    app.register_blueprint(upload_bp)# 文件上传
+
  
 # 404状态码处理器：访问不存在的路由/接口时触发
 # 属于HTTP状态捕获，不是代码抛出的Exception异常，和上面全局兜底是两套独立逻辑
@@ -182,7 +185,15 @@ app = create_app()
 def tmp_userpage():
     return "临时路由能访问！"
 
+@app.post("/api/upload/raw_test")
+def raw_test():
+    # 情况1 form-data
+    # f = request.files.get("file")
 
+    # 情况2 raw二进制流
+    raw_data = request.data
+    print(f"收到字节长度：{len(raw_data)}")
+    return {"msg": "ok", "size": len(raw_data)}
 if __name__ == "__main__":
     # app.app_context()：Flask应用上下文
     # 数据库操作（create_all、查询）必须在上下文里面执行，否则报错
@@ -192,11 +203,34 @@ if __name__ == "__main__":
 
     # 启动内置开发服务器
     # debug=True：开发模式，代码改动自动重启、页面显示报错详情；线上一定要关掉debug
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)
   
     print("===== 所有注册路由 =====")
     for rule in app.url_map.iter_rules():
         print(rule.rule)
+
+
+        ##### 文件多种格式
+        # 支持的后缀，全部小写，多后缀写完整如 tar.gz
+ALLOW_EXTS = {
+    "png", "jpg", "jpeg", "gif", "bmp",
+    "pdf", "doc", "docx", "xls", "xlsx",
+    "zip", "rar", "7z", "tar", "tar.gz", "tar.bz2"
+}
+def get_file_ext(filename: str):
+   # """
+   # 提取文件扩展名，支持复合后缀 tar.gz / tar.bz2
+   # 返回小写扩展名；无后缀返回空字符串
+   # """
+    fn = filename.lower()
+    # 优先匹配长的复合后缀
+    for ext in sorted(ALLOW_EXTS, key=len, reverse=True):
+        if fn.endswith(f".{ext}"):
+            return ext
+    # 没有匹配复合后缀，取最后一个点后面部分
+    if "." in fn:
+        return fn.rsplit(".", 1)[1]
+    return ""
 
 
 

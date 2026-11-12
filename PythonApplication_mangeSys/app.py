@@ -47,6 +47,9 @@ from route_modules.backup import bp as backup_bp # 备份蓝图（数据库）
 
 from route_modules.route_upload import upload_bp# 文件上传
 
+
+from route_netpoint.route_netpoint import org_bp
+#from .route_netpoint import org_bp # 网点蓝图包导入
 def create_app():
    # """
    # 应用工厂函数（Flask标准写法）
@@ -94,6 +97,8 @@ def create_app():
 
     app.register_blueprint(backup_bp)#数据库的注册蓝图
     app.register_blueprint(upload_bp)# 文件上传
+
+    app.register_blueprint(org_bp)#银行网点
 
  
 # 404状态码处理器：访问不存在的路由/接口时触发
@@ -210,27 +215,7 @@ if __name__ == "__main__":
         print(rule.rule)
 
 
-        ##### 文件多种格式
-        # 支持的后缀，全部小写，多后缀写完整如 tar.gz
-ALLOW_EXTS = {
-    "png", "jpg", "jpeg", "gif", "bmp",
-    "pdf", "doc", "docx", "xls", "xlsx",
-    "zip", "rar", "7z", "tar", "tar.gz", "tar.bz2"
-}
-def get_file_ext(filename: str):
-   # """
-   # 提取文件扩展名，支持复合后缀 tar.gz / tar.bz2
-   # 返回小写扩展名；无后缀返回空字符串
-   # """
-    fn = filename.lower()
-    # 优先匹配长的复合后缀
-    for ext in sorted(ALLOW_EXTS, key=len, reverse=True):
-        if fn.endswith(f".{ext}"):
-            return ext
-    # 没有匹配复合后缀，取最后一个点后面部分
-    if "." in fn:
-        return fn.rsplit(".", 1)[1]
-    return ""
+     
 
 
 

@@ -226,9 +226,9 @@ layui.use(['table','jquery','form','laydate','layer'], function(){
             //    第二个参数 'editForm' 即 form 的 lay-filter，做到只渲染当前表单
 
         form.render(null,'editForm')    ;
-        
+          console.log("新增提交数据1"); // 调试用，上线可删
         },
-         console.log("新增提交数据11111111111111："); // 调试用，上线可删
+       
           btn: ['保存', '取消'],
         // 弹层底部按钮：索引 0 对应 yes 回调，索引 1 对应 no 回调
          // 点击"保存"时触发；index 为当前弹层索引，layero 为弹层 DOM 对象

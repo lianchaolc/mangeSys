@@ -1,9 +1,8 @@
 {% extends "layout.html" %}
 {% block content %}
-<div class="layui-card" style="margin:15px;">
-    <div class="layui-card-header">网点机构管理</div>
-    <div class="layui-card-body">
-        这里放网点机构表格、新增、编辑代码
-    </div>
-</div>
+<h2>测试页面</h2>
+拿到数据数量：{{ org_list|length }}
+{% for item in org_list %}
+<div>{{ item.branch_code }} -- {{ item.name }}</div>
+{% endfor %}
 {% endblock %}

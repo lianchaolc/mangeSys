@@ -47,3 +47,4 @@ class Config:
     # 允许上传的文件类型白名单
     ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "pdf", "doc", "docx", "xls", "xlsx","webp"}
 
+

@@ -99,12 +99,12 @@ class User(db.Model):
 
 
     # 网点
-class Org(db.Model):
-    __tablename__ = "org"
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False, comment="网点名称")
-    address = db.Column(db.String(200), comment="地址")
-    create_time = db.Column(db.DateTime, default=datetime.now)
+#class Org(db.Model):
+ #   __tablename__ = "org"
+  #  id = db.Column(db.Integer, primary_key=True)
+  #  name = db.Column(db.String(100), nullable=False, comment="网点名称")
+  #  address = db.Column(db.String(200), comment="地址")
+  #  create_time = db.Column(db.DateTime, default=datetime.now)
 
 # 押运人员
 class Escort(db.Model):
@@ -168,8 +168,64 @@ class FileRecord(db.Model):
         "file_hash": self.file_hash,
         "create_time": self.create_time.strftime("%Y-%m-%d %H:%M:%S")
     }
+ #  写网点管理相关的代码
+ # 1. 网点管理（只存网点基础信息）
+# 1. 网点管理（只存网点基础信息）
+class Org(db.Model):
+    __tablename__ = "org"
+    id = db.Column(db.Integer, primary_key=True, comment="网点ID")
+    branch_code = db.Column(db.String(64), nullable=False, unique=True, comment="网点编号")
+    name = db.Column(db.String(128), nullable=False, comment="网点名称")
+    branch_type = db.Column(db.SmallInteger, nullable=False, comment="网点类型：1银行网点，2自助点，3金库")
+    region = db.Column(db.String(128), default="", comment="所属区域")
+    address = db.Column(db.String(256), default="", comment="地址")
+    longitude = db.Column(db.Numeric(10,6), nullable=True, comment="经度")
+    latitude = db.Column(db.Numeric(10,6), nullable=True, comment="纬度")
+    status = db.Column(db.SmallInteger, default=1, comment="状态：1启用 0停用")
+    remark = db.Column(db.String(512), default="", comment="备注")
+    create_time = db.Column(db.DateTime, default=datetime.now, comment="创建时间")
 
+    # 关系只是用来查询，页面不再内嵌维护
+    #staffs = db.relationship("OrgStaff", back_populates="org", lazy="select")
+   # escorts = db.relationship("Escort", back_populates="org", lazy="select")
 
+# 2. 网点人员管理（行长、组长、安保，独立页面CRUD，带头像）
+#class OrgStaff(db.Model):
+ #   __tablename__ = "org_staff"
+ #   id = db.Column(db.Integer, primary_key=True, comment="人员ID")
+ #   org_id = db.Column(db.Integer, db.ForeignKey("org.id"), nullable=False, comment="所属网点id")
+ #   staff_name = db.Column(db.String(64), nullable=False, comment="姓名")
+#   staff_role = db.Column(db.SmallInteger, nullable=False, comment="角色：1行长，2组长，3安保")
+ # #  staff_phone = db.Column(db.String(20), default="", comment="手机号")
+ #   avatar_url = db.Column(db.String(256), default="", comment="人员照片地址")
+#    create_time = db.Column(db.DateTime, default=datetime.now, comment="创建时间")
+    # ✅ 这里用 back_populates，名字和Org里的relationship名字对应！
+  #  org = db.relationship("Org", back_populates="staffs", lazy="select")
+# 3. 押运员管理（独立页面CRUD）
+#class Escort(db.Model):
+ #   __tablename__ = "escort"
+ #   id = db.Column(db.Integer, primary_key=True)
+  #  name = db.Column(db.String(50), nullable=False, comment="姓名")
+  #  phone = db.Column(db.String(20), comment="手机号")
+  #  id_card = db.Column(db.String(30), comment="身份证号")
+  #  org_id = db.Column(db.Integer, db.ForeignKey("org.id"), comment="所属网点id")
+  #  create_time = db.Column(db.DateTime, default=datetime.now)
+ # org = db.relationship("Org", back_populates="escorts", lazy="select")
+
+ # 新网点表，完整字段，全新表
+class OrgNew(db.Model):
+    __tablename__ = "org_new"
+    id = db.Column(db.Integer, primary_key=True, comment="主键")
+    branch_code = db.Column(db.String(64), nullable=False, unique=True, comment="网点编号，不可重复")
+    name = db.Column(db.String(128), nullable=False, comment="网点名称")
+    branch_type = db.Column(db.SmallInteger, nullable=False, comment="网点类型：1银行网点，2自助点，3金库")
+    region = db.Column(db.String(128), default="", comment="所属区域")
+    address = db.Column(db.String(256), default="", comment="详细地址")
+    longitude = db.Column(db.Numeric(10,6), nullable=True, comment="经度")
+    latitude = db.Column(db.Numeric(10,6), nullable=True, comment="纬度")
+    status = db.Column(db.SmallInteger, default=1, comment="状态：1启用，0停用")
+    remark = db.Column(db.String(512), default="", comment="备注信息")
+    create_time = db.Column(db.DateTime, default=datetime.now, nullable=False,comment="记录创建时间")
 
 
       

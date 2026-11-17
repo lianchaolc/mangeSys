@@ -44,18 +44,16 @@
 <div class="layui-layout-admin">
 <!-- ==========顶部头部区域 layui-header，蓝色背景 ========== -->
 <div class="layui-header layui-bg-blue">
-    <!-- 【新增：顶部页面标题，解决导航文字显示不正确】 -->
     <div class="top-page-title" id="topPageTitle">首页看板</div>
 
-    <!-- 顶部水平导航菜单 lay-filter="topNav"用于JS筛选导航组件 -->
+    <!-- 顶部水平导航菜单【↓修改】全部a标签增加 data-group 分组标识 -->
     <ul class="layui-nav layui-layout-left" lay-filter="topNav">
-        <!-- ⚠注意：layui水平导航li必须加上 class="layui-nav-item"，否则高亮layui‑this无效！！！ -->
-        <li class="layui-nav-item"><a href="/dashboard" data-page-title="首页看板">首页看板</a></li>
-        <li class="layui-nav-item"><a href="/customer" data-page-title="客户库存管理">客户库存管理</a></li>
-        <li class="layui-nav-item"><a href="#" data-page-title="款箱管理">款箱管理</a></li>
-        <li class="layui-nav-item"><a href="#" data-page-title="押运管理">押运管理</a></li>
+        <li class="layui-nav-item"><a href="/dashboard" data-page-title="首页看板" data-group="workbench">首页看板</a></li>
+        <li class="layui-nav-item"><a href="/customer" data-page-title="客户库存管理" data-group="customer">客户库存管理</a></li>
+        <li class="layui-nav-item"><a href="#" data-page-title="款箱管理" data-group="box">款箱管理</a></li>
+        <li class="layui-nav-item"><a href="#" data-page-title="押运管理" data-group="escort">押运管理</a></li>
     </ul>
-    <!-- 右上角：用户信息+退出登录，必须加 layui‑nav‑item -->
+
     <ul class="layui-nav layui-layout-right" lay-filter="topRightNav">
         <li class="layui-nav-item">
             <a href="javascript:void(0);" onclick="loginout()">{{session.username}}｜退出</a>
@@ -63,28 +61,38 @@
     </ul>
 </div>
 
-<!-- ==========左侧侧边栏区域 layui‑side ========== -->
+<!-- 左侧侧边栏【↓修改】外层li增加 class="left-menu-item" + data-group 分组标识，和顶部导航一一对应 -->
 <div class="layui-side layui-bg-black">
-    <!-- layui-side-scroll：侧边栏内部滚动容器，菜单过多出现滚动条 -->
     <div class="layui-side-scroll">
-        <!-- layui-nav-tree：树形侧边菜单，lay‑filter用于js筛选组件 -->
         <ul class="layui-nav layui-nav-tree" lay-filter="leftMenu">
-            <li class="layui-nav-item">
+            <!-- 工作台分组 -->
+            <li class="layui-nav-item left-menu-item" data-group="workbench">
                 <a href="/dashboard" data-page-title="工作台">工作台</a>
             </li>
-            <li class="layui-nav-item">
+            <!-- 客户相关分组 -->
+            <li class="layui-nav-item left-menu-item" data-group="customer">
                 <a href="javascript:;">系统管理</a>
-                <!-- layui-nav‑child：子菜单下拉列表 -->
-              <dl class="layui-nav-child">
-   
-    <dd><a href="/api/user/page" data-page-title="用户管理">用户管理</a></dd>
-
-    <dd><a href="/org" data-page-title="网点机构管理">网点机构管理</a></dd>
-
-    <dd><a href="/customer" data-page-title="客户管理">客户管理</a></dd>
-   
-</dl>
-
+                <dl class="layui-nav-child">
+                    <dd><a href="/api/user/page" data-page-title="用户管理">用户管理</a></dd>
+                    <dd><a href="/netpoint" data-page-title="网点机构管理">网点机构管理</a></dd>
+                    <dd><a href="/customer" data-page-title="客户管理">客户管理</a></dd>
+                </dl>
+            </li>
+            <!-- 款箱管理分组 -->
+            <li class="layui-nav-item left-menu-item" data-group="box">
+                <a href="javascript:;">款箱相关菜单</a>
+                <dl class="layui-nav-child">
+                    <dd><a href="/xxx1" data-page-title="款箱登记">款箱登记</a></dd>
+                    <dd><a href="/xxx2" data-page-title="款箱盘点">款箱盘点</a></dd>
+                </dl>
+            </li>
+            <!-- 押运管理分组 -->
+            <li class="layui-nav-item left-menu-item" data-group="escort">
+                <a href="javascript:;">押运相关菜单</a>
+                <dl class="layui-nav-child">
+                    <dd><a href="/yy1" data-page-title="押运任务">押运任务</a></dd>
+                    <dd><a href="/yy2" data-page-title="线路管理">线路管理</a></dd>
+                </dl>
             </li>
         </ul>
     </div>
@@ -103,21 +111,36 @@
 layui.use(['element', 'jquery'], function(){
     var element = layui.element;
     var $ = layui.jquery;
-    // 获取当前浏览器访问路径
+    //【✅修复：path变量提前定义，优先拿到当前路由】
     var path = window.location.pathname;
+
+    //【↓新增】侧边菜单切换函数，控制分组显示隐藏
+    function showLeftMenu(groupKey){
+        // 先隐藏所有侧边分组菜单
+        $('.left-menu-item').hide();
+        // 展示当前选中分组的菜单
+        $('.left-menu-item[data-group="'+groupKey+'"]').show();
+        // 刷新layui导航渲染，下拉菜单样式正常生效
+        element.render('nav','leftMenu');
+    }
 
     // ====================== 1.左侧菜单自动高亮逻辑 ======================
     // 访问哪个页面，对应菜单激活高亮、展开父菜单
+    var initGroup = 'workbench'; // 默认分组
     $(".layui-nav-tree a").each(function(){
         var href = $(this).attr("href");
         var pageTitle = $(this).data('page-title'); //读取data-page-title页面标题
         if(href === path){
             $(this).parent().addClass("layui-this");
             $(this).closest(".layui-nav-item").addClass("layui-nav-itemed");
+            //【↓新增】路由匹配时，同步切换侧边分组
+            initGroup = $(this).closest(".left-menu-item").data("group");
             // 更新顶部页面标题，解决顶部导航文字不正确
             $("#topPageTitle").text(pageTitle);
         }
     });
+    //【✅修复：初始化使用匹配到的分组，而不是固定工作台】
+    showLeftMenu(initGroup);
 
     // ====================== 2.顶部水平导航自动高亮 ======================
     $("[lay-filter='topNav'] .layui-nav-item").each(function(){
@@ -126,6 +149,9 @@ layui.use(['element', 'jquery'], function(){
         var pageTitle = aDom.data('page-title');
         if(aHref === path){
             $(this).addClass("layui-this");
+            //【↓新增】路由匹配，拿到分组，同步侧边栏
+            initGroup = aDom.data("group");
+            showLeftMenu(initGroup);
             // 更新顶部页面标题
             $("#topPageTitle").text(pageTitle);
         }else{
@@ -144,11 +170,18 @@ layui.use(['element', 'jquery'], function(){
         }
     });
 
-    // ====================== 4.监听顶部导航点击事件，切换顶部标题 ======================
+    // ====================== 4.监听顶部导航点击事件【↓修改】：增加侧边分组联动逻辑，保留原有标题修改 ======================
     element.on('nav(topNav)',function(elem){
         var clickTitle = $(elem).data('page-title');
+        var group = $(elem).data('group');
         if(clickTitle){
             $("#topPageTitle").text(clickTitle);
+        }
+        // 联动侧边栏切换
+        if(group){
+            showLeftMenu(group);
+            // 自动展开当前分组下拉菜单，不需要就注释掉这一行
+            $('.left-menu-item[data-group="'+group+'"]').find('a').click();
         }
     });
 });

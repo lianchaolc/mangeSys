@@ -1,68 +1,87 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>网点列表展示</h2>
-<p>拿到数据数量：{{ org_list|length }}</p>
+
 <style>
-/* 学习点：给表格整体设置浅边框，替代默认深色边框 */
+/* =========================================================================
+   1. 表格视觉样式（保持你原来的设计）
+   ========================================================================= */
 #netTable {
   border-collapse: collapse;
-  border-color: #e6e6e6;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
 }
-/* 学习点：单元格内边距，控制紧凑度，对比原来0.75rem */
-#netTable th,
-#netTable td {
-  padding: 6px 8px;
-  border-color: #e6e6e6 !important;
-  font-size: 0.9rem; /* 缩小字号，后台表格常规字号 */
-}
-/* 学习点：表头背景色，制造层级，区分表头和数据行 */
 #netTable thead th {
-  background-color: #f5f7fa;
-  font-weight: 500;
+  background-color: #2c3e50;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 14px 12px;
+  border: none;
+  white-space: nowrap;
+  text-align: left;
 }
-/* 学习点：hover行高亮，交互反馈，后台必备 */
-#netTable tbody tr:hover {
-  background-color: #f0f2f5;
+#netTable thead tr { border-bottom: 3px solid #3498db; }
+#netTable tbody td { padding: 12px; font-size: 14px; color: #333; border-color: #e6e6e6; }
+#netTable tbody tr:nth-of-type(odd) { background-color: #f8f9fa; }
+#netTable tbody tr:nth-of-type(even) { background-color: #ffffff; }
+#netTable tbody tr:hover { background-color: #e3f2fd !important; }
+.container-fluid { max-width: 98%; }
+
+/* 表头排序箭头 */
+#netTable thead th:nth-child(8) { cursor: pointer; }
+#netTable thead th:nth-child(8)::after {
+    display: inline-block !important;
+    content: " ⇅";
+    color: #3498db;
+    margin-left: 5px;
 }
-/* 学习点：缩小按钮尺寸，柔和圆角，Layui圆角是3px左右，Bootstrap默认偏大 */
-.btn-sm {
-  border-radius: 3px;
-  font-size: 0.8rem;
+#netTable thead th:nth-child(8).sorting_asc::after { content: " ↑"; }
+#netTable thead th:nth-child(8).sorting_desc::after { content: " ↓"; }
+
+/* =========================================================================
+   2. 🚨 终极层级补丁（解决 Layui 和 Bootstrap 互相打架）
+   ========================================================================= */
+/* 
+   Layui 的布局（比如左侧菜单、顶部导航）默认层级非常非常高。
+   导致 Bootstrap 的弹窗虽然能弹出来，但会被 Layui 的透明层挡住，点不到。
+   下面这段代码就是强行把弹窗的层级拉到最高。
+*/
+.modal {
+    z-index: 9999999 !important; 
 }
-/* 学习点：容器宽度，Bootstrap container默认有固定最大宽度，后台一般铺满大部分屏幕 */
-.container {
-  max-width: 98%;
+.modal-backdrop {
+    z-index: 9999998 !important; 
+}
+/* 防止有些框架给 body 加了禁止点击的属性 */
+body.modal-open {
+    pointer-events: auto !important;
 }
 </style>
 
-<script>
-$(function(){
-    $('#netTable').DataTable({
-        // 学习点：dom 自定义布局，调整控件位置
-        dom: '<"d-flex justify-content-between align-items-center mb-3" f l>t<"d-flex justify-content-between mt-3" i p>',
-        // 学习点：中文语言包
-        language: {
-            url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/zh-CN.json"
-        },
-        // 学习点：开启行hover（和我们css配合）
-        hover: true,
-        // 学习点：默认每页条数
-        pageLength: 10,
-        // 学习点：可选每页条数
-        lengthMenu: [5,10,20,50]
-    })
-})
-</script>
+<!-- =========================================================================
+   3. 引入外部资源 (Bootstrap 5 和 DataTables 3)
+   ========================================================================= -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/datatables@1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet"><div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>网点列表展示</h2>
-        <button class="btn btn-primary">新增网点</button>
-    </div>
-    <p class="text-secondary">拿到数据数量：{{ org_list|length }}</p>
+<link href="https://cdn.datatables.net/v/bs5/dt-3.1.5/datatables.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/v/bs5/dt-3.1.5/datatables.min.js"></script>
 
-    <table class="table table-bordered table-striped" id="netTable">
-        <thead class="table-light">
+<!-- =========================================================================
+   4. 页面主体内容
+   ========================================================================= -->
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">网点列表展示</h2>
+            <p class="text-muted mb-0 mt-1">拿到数据数量：{{ org_list|length }}</p>
+        </div>
+        <button type="button" class="btn btn-primary" id="netpointorg_addnetpoint">新增网点</button>
+    </div>
+
+    <table class="table mb-0" id="netTable">
+        <thead>
             <tr>
                 <th>网点编号</th>
                 <th>网点名称</th>
@@ -84,8 +103,7 @@ $(function(){
                     {% if item.branch_type == 1 %}银行网点
                     {% elif item.branch_type == 2 %}自助点
                     {% elif item.branch_type == 3 %}金库
-                    {% else %}-
-                    {% endif %}
+                    {% else %}-{% endif %}
                 </td>
                 <td>{{ item.region if item.region else '-' }}</td>
                 <td>{{ item.address if item.address else '-' }}</td>
@@ -99,29 +117,118 @@ $(function(){
                 <td>{{ item.remark if item.remark else '-' }}</td>
                 <td>{{ item.create_time if item.create_time else '-' }}</td>
                 <td>
-                    <button class="btn btn-sm btn-outline-warning">编辑</button>
-                    <button class="btn btn-sm btn-outline-danger">删除</button>
+                    <button type="button" class="btn btn-sm btn-outline-warning">编辑</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger">删除</button>
                 </td>
             </tr>
             {% else %}
-            <tr>
-                <td colspan="9" class="text-center text-muted">暂无网点数据</td>
-            </tr>
+            <tr><td colspan="9" class="text-center text-muted py-4">暂无网点数据</td></tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/datatables@1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/datatables@1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<!-- =========================================================================
+   5. Bootstrap 5 弹窗
+   ========================================================================= -->
+<div class="modal fade" id="addNetPointModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">新增网点</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="netPointForm">
+            <div class="mb-3">
+                <label class="form-label">网点编号</label>
+                <input type="text" class="form-control" id="branchCode" placeholder="请输入网点编号" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">网点名称</label>
+                <input type="text" class="form-control" id="branchName" placeholder="请输入网点名称" required>
+            </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" id="btn-save-point">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================================
+   6. JavaScript 交互脚本
+   ========================================================================= -->
 <script>
-$(function(){
-    $('#netTable').DataTable({
-        language: {
-            url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/zh-CN.json"
+document.addEventListener("DOMContentLoaded", function() {
+    
+    // 【注释】1. 初始化 DataTables 3
+    new DataTable('#netTable', {
+        language: { url: "https://cdn.datatables.net/plug-ins/2.3.7/i18n/zh.json" },
+        pageLength: 10,
+        order: [[7, 'desc']],
+        columnDefs: [{ orderable: false, targets: [0, 1, 2, 3, 4, 5, 6, 8] }]
+    });
+
+    // 【注释】2. 获取页面上需要用到的 DOM 元素（按钮、弹窗、表单）
+    const addBtn = document.getElementById('netpointorg_addnetpoint');
+    const modalEl = document.getElementById('addNetPointModal');
+    const saveBtn = document.getElementById('btn-save-point');
+    const formEl = document.getElementById('netPointForm');
+
+    // 【注释】3. 点击“新增网点”按钮触发弹窗
+    addBtn.addEventListener('click', function() {
+        // 每次打开前清空一下表单
+        formEl.reset();
+        
+        // 🚨 核心绝杀 1：把弹窗从 Layui 的内容区拽出来，直接挂到整个网页的最外层（body）！
+        // 这能打破父级容器的层级封锁，保证弹窗绝对在最上面。
+        document.body.appendChild(modalEl);
+
+        // 实例化并显示弹窗
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) {
+            modal = new bootstrap.Modal(modalEl);
         }
-    })
-})
+        modal.show();
+
+        // 🚨 核心绝杀 2：物理超度（删除）灰色遮罩层！
+        // 我们用 setTimeout 等个 50 毫秒，等 Bootstrap 刚把遮罩层生成出来，我们就把它直接 remove() 掉。
+        // 虽然背景不会变灰了，但你的鼠标点击和键盘输入再也不会被任何透明层拦截！
+        setTimeout(function() {
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(bg => bg.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = 'auto'; // 恢复页面滚动
+        }, 50);
+    });
+
+    // 【注释】4. 点击弹窗里的“保存”按钮
+
+    saveBtn.addEventListener('click', function() {
+        // 获取输入框里的值
+        const code = document.getElementById('branchCode').value.trim();
+        const name = document.getElementById('branchName').value.trim();
+        
+        // 简单校验
+        if(!code || !name) {
+            alert("请填写网点编号和名称！");
+            return;
+        }
+        
+        // 这里通常是写 fetch POST 请求发给后端
+        console.log("准备提交的数据:", { branch_code: code, name: name });
+        
+        // 模拟保存成功后，关闭弹窗
+        alert("保存成功！(当前为模拟)");
+        bootstrap.Modal.getInstance(modalEl).hide();
+        
+        // 清理表单
+        formEl.reset();
+    });
+});
 </script>
+
 {% endblock %}

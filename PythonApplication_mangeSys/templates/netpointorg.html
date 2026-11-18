@@ -1,9 +1,30 @@
 {% extends "layout.html" %}
 {% block content %}
 
+<!-- 
+  🚨 资源引入策略：将 Bootstrap 和 DataTables 的 CSS/JS 放在 block content 内部，
+  而不是 layout.html 的 <head> 里。
+  原因：避免 Bootstrap 的全局基础样式（如 body、*、h1 等）覆盖掉 Layui 外围框架的样式，
+  从而防止侧边栏消失、顶部导航错位等问题。
+-->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/v/bs5/dt-3.1.5/datatables.min.css" rel="stylesheet">
+<!--导出功能-->
 <style>
 /* =========================================================================
-   1. 表格视觉样式（保持你原来的设计）
+   1. 强行保护 Layui 的外层框架不被 Bootstrap 覆盖
+   ========================================================================= */
+/* 某些情况下 Bootstrap 会把 body 变为白色，这里强行改回 Layui 的灰色背景 */
+body {
+    background-color: #f2f2f2 !important;
+}
+/* 保护顶部导航栏的原有颜色（这里假设你的 Layui 主题色是墨绿色 009688） */
+.layui-layout-admin .layui-header {
+    background-color: #009688 !important;
+}
+
+/* =========================================================================
+   2. 你的表格视觉样式（保持原汁原味的设计）
    ========================================================================= */
 #netTable {
   border-collapse: collapse;
@@ -11,6 +32,7 @@
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  width: 100%;
 }
 #netTable thead th {
   background-color: #2c3e50;
@@ -27,9 +49,9 @@
 #netTable tbody tr:nth-of-type(odd) { background-color: #f8f9fa; }
 #netTable tbody tr:nth-of-type(even) { background-color: #ffffff; }
 #netTable tbody tr:hover { background-color: #e3f2fd !important; }
-.container-fluid { max-width: 98%; }
+.container-fluid { max-width: 98%; padding: 20px; }
 
-/* 表头排序箭头 */
+/* 表头排序箭头（针对第 8 列创建时间） */
 #netTable thead th:nth-child(8) { cursor: pointer; }
 #netTable thead th:nth-child(8)::after {
     display: inline-block !important;
@@ -41,34 +63,72 @@
 #netTable thead th:nth-child(8).sorting_desc::after { content: " ↓"; }
 
 /* =========================================================================
-   2. 🚨 终极层级补丁（解决 Layui 和 Bootstrap 互相打架）
+   3. 弹窗层级压制（解决灰屏点不动的终极方案）
    ========================================================================= */
 /* 
-   Layui 的布局（比如左侧菜单、顶部导航）默认层级非常非常高。
-   导致 Bootstrap 的弹窗虽然能弹出来，但会被 Layui 的透明层挡住，点不到。
-   下面这段代码就是强行把弹窗的层级拉到最高。
+   因为页面被包裹在 Layui 的容器里，Bootstrap 的弹窗容易被其他层级遮挡。
+   强行把弹窗的 z-index 拉到 999 万，确保它绝对悬浮在所有元素之上。
 */
-.modal {
+.modal { 
     z-index: 9999999 !important; 
+    /* 
+       🚨 为什么手动加背景？
+       因为下面我们把 Bootstrap 自带的遮罩层干掉了，如果不加这行，
+       弹窗打开时背后的页面不会变暗，会显得很乱。
+       这里用 rgba 实现半透明黑底效果，完美替代官方遮罩。
+    */
+    background: rgba(0, 0, 0, 0.5) !important; 
 }
+
+/* 
+   🚨 终极绝杀：干掉挡鼠标的透明玻璃罩！
+   Bootstrap 默认会生成一个 .modal-backdrop，它经常会和 Layui 的遮罩冲突，
+   导致你看到弹窗变灰、无法点击输入框。直接 display: none 隐藏它，世界瞬间清静。
+*/
 .modal-backdrop {
-    z-index: 9999998 !important; 
+    display: none !important; 
 }
-/* 防止有些框架给 body 加了禁止点击的属性 */
-body.modal-open {
-    pointer-events: auto !important;
+/**如果你想要**左右分散排版**（文字靠左、下拉中间、分页靠右），css 改成：
+*/
+.bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top:10px;
 }
+.bottom .dataTables_info,
+.bottom .dataTables_length,
+.bottom .dataTables_paginate {
+    float: none;
+}
+
 </style>
 
-<!-- =========================================================================
-   3. 引入外部资源 (Bootstrap 5 和 DataTables 3)
-   ========================================================================= -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdn.datatables.net/v/bs5/dt-3.1.5/datatables.min.css" rel="stylesheet">
+<!-- 引入 JS 库，放在这里不影响外层框架 -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.datatables.net/v/bs5/dt-3.1.5/datatables.min.js"></script>
 
 <!-- =========================================================================
+<!--导出功能-->
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.1.5/css/buttons.bootstrap5.min.css">
+
+<!-- 引入CSS 全部放前面 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/v/bs5/dt-3.1.5/datatables.min.css" rel="stylesheet">
+<!-- Buttons导出配套css -->
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.1.5/css/buttons.bootstrap5.min.css">
+<!-- 然后才是JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/v/bs5/dt-3.1.5/datatables.min.js"></script>
+<!--导出功能JS-->
+<script src="https://cdn.datatables.net/buttons/3.1.5/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.1.5/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.1.5/js/buttons.html5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- 不需要PDF就注释下面这两行 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
+
    4. 页面主体内容
    ========================================================================= -->
 <div class="container-fluid mt-4">
@@ -77,6 +137,7 @@ body.modal-open {
             <h2 class="mb-0">网点列表展示</h2>
             <p class="text-muted mb-0 mt-1">拿到数据数量：{{ org_list|length }}</p>
         </div>
+        <button type="button" class="btn btn-success me-2" id="exportExcelBtn">导出Excel</button>
         <button type="button" class="btn btn-primary" id="netpointorg_addnetpoint">新增网点</button>
     </div>
 
@@ -100,6 +161,7 @@ body.modal-open {
                 <td>{{ item.branch_code }}</td>
                 <td>{{ item.name }}</td>
                 <td>
+                    {# 将后端返回的数字类型转为中文显示 #}
                     {% if item.branch_type == 1 %}银行网点
                     {% elif item.branch_type == 2 %}自助点
                     {% elif item.branch_type == 3 %}金库
@@ -108,6 +170,7 @@ body.modal-open {
                 <td>{{ item.region if item.region else '-' }}</td>
                 <td>{{ item.address if item.address else '-' }}</td>
                 <td>
+                    {# 状态徽章：1为绿色启用，0为红色停用 #}
                     {% if item.status == 1 %}
                         <span class="badge bg-success">启用</span>
                     {% else %}
@@ -115,13 +178,14 @@ body.modal-open {
                     {% endif %}
                 </td>
                 <td>{{ item.remark if item.remark else '-' }}</td>
-                <td>{{ item.create_time if item.create_time else '-' }}</td>
+                <td>{{ item.create_time.strftime('%Y-%m-%d %H:%M:%S') if item.create_time else '-' }}</td>
                 <td>
-                    <button type="button" class="btn btn-sm btn-outline-warning">编辑</button>
-                    <button type="button" class="btn btn-sm btn-outline-danger">删除</button>
+                    <button type="button" class="btn btn-sm btn-outline-warning btn-edit" data-id="{{ item.branch_code }}">编辑</button>
+                    <button type="button"class="btn btn-sm btn-outline-danger btn-delete" data-id="{{ item.branch_code }}">删除</button>
                 </td>
             </tr>
             {% else %}
+            {# 如果数据为空，显示提示信息，colspan="9" 表示合并 9 列 #}
             <tr><td colspan="9" class="text-center text-muted py-4">暂无网点数据</td></tr>
             {% endfor %}
         </tbody>
@@ -139,14 +203,67 @@ body.modal-open {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form id="netPointForm">
-            <div class="mb-3">
-                <label class="form-label">网点编号</label>
-                <input type="text" class="form-control" id="branchCode" placeholder="请输入网点编号" required>
+        <form id="netPointForm" novalidate>
+        <!-- 🚨 新增：隐藏域用来记录模式（add 或 edit） -->
+        <input type="hidden" id="formMode" value="add">
+
+            <!-- 第一行：编号、名称 -->
+            <div class="row">
+                           <!-- 第一行：编号、名称 -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <!-- 🚨 label 必须在 input 上面 -->
+                    <label class="form-label" for="branchCode">网点编号 <span class="text-danger">*</span></label>
+                    <!-- 🚨 去掉了 readonly，这样新增时才能打字 -->
+                    <input type="text" class="form-control" id="branchCode" placeholder="请输入网点编号" required>
+                    <div class="invalid-feedback">请填写网点编号</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="branchName">网点名称 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="branchName" placeholder="请输入网点名称" required>
+                    <div class="invalid-feedback">请填写网点名称</div>
+                </div>
             </div>
+
+            <!-- 第二行：类型、区域 -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="branchType">网点类型 <span class="text-danger">*</span></label>
+                    <select class="form-select" id="branchType" required>
+                        <option value="">请选择网点类型</option>
+                        <option value="1">银行网点</option>
+                        <option value="2">自助点</option>
+                        <option value="3">金库</option>
+                    </select>
+                    <div class="invalid-feedback">请选择网点类型</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="branchRegion">所属区域</label>
+                    <input type="text" class="form-control" id="branchRegion" placeholder="如：华东大区">
+                </div>
+            </div>
+
+            <!-- 第三行：地址 -->
             <div class="mb-3">
-                <label class="form-label">网点名称</label>
-                <input type="text" class="form-control" id="branchName" placeholder="请输入网点名称" required>
+                <label class="form-label" for="branchAddress">详细地址</label>
+                <input type="text" class="form-control" id="branchAddress" placeholder="如：XX市XX路XX号">
+            </div>
+
+            <!-- 第四行：状态、备注 -->
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label" for="branchStatus">状态</label>
+                    <select class="form-select" id="branchStatus">
+                        <option value="1">启用</option>
+                        <option value="0">停用</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="branchRemark">备注</label>
+                    <input type="text" class="form-control" id="branchRemark" placeholder="选填">
+                
+           
+                </div>
             </div>
         </form>
       </div>
@@ -161,74 +278,314 @@ body.modal-open {
 <!-- =========================================================================
    6. JavaScript 交互脚本
    ========================================================================= -->
+
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    
-    // 【注释】1. 初始化 DataTables 3
+
+    // =========================================================================
+    // 1. 初始化 DataTables 3
+    // =========================================================================
     new DataTable('#netTable', {
         language: { url: "https://cdn.datatables.net/plug-ins/2.3.7/i18n/zh.json" },
-        pageLength: 10,
-        order: [[7, 'desc']],
-        columnDefs: [{ orderable: false, targets: [0, 1, 2, 3, 4, 5, 6, 8] }]
+        pageLength: 10, 
+        order: [[7, 'desc']], 
+        columnDefs: [{ orderable: false, targets: [0, 1, 2, 3, 4, 5, 6, 8] }],
+        dom: 'frt<"bottom"ilp>',
+       
+    
     });
 
-    // 【注释】2. 获取页面上需要用到的 DOM 元素（按钮、弹窗、表单）
+    // =========================================================================
+    // 2. 获取页面上的 DOM 元素
+    // =========================================================================
     const addBtn = document.getElementById('netpointorg_addnetpoint');
     const modalEl = document.getElementById('addNetPointModal');
     const saveBtn = document.getElementById('btn-save-point');
     const formEl = document.getElementById('netPointForm');
+    
+    // 【新增差异】：获取弹窗标题和隐藏域（用于区分新增还是编辑）
+    const modalTitle = document.querySelector('.modal-title'); 
+    const formMode = document.getElementById('formMode'); 
+    
+    const codeEl = document.getElementById('branchCode');
+    const nameEl = document.getElementById('branchName');
+    const typeEl = document.getElementById('branchType');
+    const regionEl = document.getElementById('branchRegion');
+    const addressEl = document.getElementById('branchAddress');
+    const statusEl = document.getElementById('branchStatus');
+    const remarkEl = document.getElementById('branchRemark');
 
-    // 【注释】3. 点击“新增网点”按钮触发弹窗
-    addBtn.addEventListener('click', function() {
-        // 每次打开前清空一下表单
-        formEl.reset();
-        
-        // 🚨 核心绝杀 1：把弹窗从 Layui 的内容区拽出来，直接挂到整个网页的最外层（body）！
-        // 这能打破父级容器的层级封锁，保证弹窗绝对在最上面。
-        document.body.appendChild(modalEl);
+    // 【新增差异】：将输入框放进数组，方便后续一键清空红色报错样式
+    const allInputs = [codeEl, nameEl, typeEl, regionEl, addressEl, statusEl, remarkEl];
 
-        // 实例化并显示弹窗
-        let modal = bootstrap.Modal.getInstance(modalEl);
-        if (!modal) {
-            modal = new bootstrap.Modal(modalEl);
-        }
-        modal.show();
-
-        // 🚨 核心绝杀 2：物理超度（删除）灰色遮罩层！
-        // 我们用 setTimeout 等个 50 毫秒，等 Bootstrap 刚把遮罩层生成出来，我们就把它直接 remove() 掉。
-        // 虽然背景不会变灰了，但你的鼠标点击和键盘输入再也不会被任何透明层拦截！
-        setTimeout(function() {
-            const backdrops = document.querySelectorAll('.modal-backdrop');
-            backdrops.forEach(bg => bg.remove());
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = 'auto'; // 恢复页面滚动
-        }, 50);
+    // =========================================================================
+    // 3. 初始化 Bootstrap 弹窗实例
+    // =========================================================================
+    // 🚨 container: 'body' 是解决被 Layui 遮挡的核心配置，千万别删
+    const modal = new bootstrap.Modal(modalEl, {
+        container: 'body' 
     });
 
-    // 【注释】4. 点击弹窗里的“保存”按钮
+    // =========================================================================
+    // 【新增差异】：4. 封装通用打开弹窗函数（核心复用逻辑）
+    // 作用：根据传进来的 mode ('add' 或 'edit') 和 data 数据，动态切换弹窗形态
+    // =========================================================================
+    function openModal(mode, data = null) {
+        formEl.reset(); // 重置表单内容
+        formMode.value = mode; // 将模式存入隐藏域，给保存按钮看
 
-    saveBtn.addEventListener('click', function() {
-        // 获取输入框里的值
-        const code = document.getElementById('branchCode').value.trim();
-        const name = document.getElementById('branchName').value.trim();
-        
-        // 简单校验
-        if(!code || !name) {
-            alert("请填写网点编号和名称！");
-            return;
+        // 清理所有输入框的红色错误提示
+        allInputs.forEach(el => el.classList.remove('is-invalid'));
+
+        if (mode === 'add') {
+            modalTitle.textContent = '新增网点';
+            codeEl.readOnly = false; // 🚨 关键：新增时，解除只读，允许输入编号
+            saveBtn.textContent = '保存';
+        } else if (mode === 'edit' && data) {
+            modalTitle.textContent = '编辑网点';
+            codeEl.readOnly = true;  // 🚨 关键：编辑时，开启只读，不允许改主键
+            saveBtn.textContent = '更新';
+
+            // 数据回填（将表格里的值填入弹窗输入框）
+            codeEl.value = data.branch_code || '';
+            nameEl.value = data.name || '';
+            
+            // 处理网点类型（将文字反向转回数字 1, 2, 3）
+            if (data.branch_type_text === '银行网点') typeEl.value = '1';
+            else if (data.branch_type_text === '自助点') typeEl.value = '2';
+            else if (data.branch_type_text === '金库') typeEl.value = '3';
+            else typeEl.value = '';
+
+            // 处理空值（如果是 '-' 就填空字符串）
+            regionEl.value = data.region === '-' ? '' : (data.region || '');
+            addressEl.value = data.address === '-' ? '' : (data.address || '');
+            remarkEl.value = data.remark === '-' ? '' : (data.remark || '');
+            
+            // 处理状态（将文字“启用/停用”转回数字 1 或 0）
+            statusEl.value = data.status_text.trim() === '启用' ? '1' : '0'; 
         }
+
+        modal.show(); // 显示弹窗
+    }
+
+    // =========================================================================
+    // 【修改差异】：5. 点击“新增网点”按钮
+    // 原来的 `formEl.reset()` 等逻辑现在全被封装进 openModal 里了，这里只需传 'add'
+    // =========================================================================
+    addBtn.addEventListener('click', function() {
+        openModal('add');
+    });
+
+    // =========================================================================
+    // 【新增差异】：6. 点击表格里的“编辑”按钮（事件委托）
+    // 作用：利用事件冒泡，即使表格有 1000 行，也只需要绑定一次点击事件
+    // =========================================================================
+    document.querySelector('#netTable tbody').addEventListener('click', function(e) {
+        // 判断点击的是不是带有 btn-edit 类的按钮
+        if (e.target.classList.contains('btn-edit')) {
+            // 找到按钮所在的那一行 (tr)
+            const tr = e.target.closest('tr');
+            
+            // 从这一行的单元格 (td) 里提取文字
+            const rowData = {
+                branch_code: tr.cells[0].innerText.trim(),
+                name: tr.cells[1].innerText.trim(),
+                branch_type_text: tr.cells[2].innerText.trim(),
+                region: tr.cells[3].innerText.trim(),
+                address: tr.cells[4].innerText.trim(),
+                status_text: tr.cells[5].innerText.trim(),
+                remark: tr.cells[6].innerText.trim()
+            };
+            
+            // 带着提取到的数据，以 'edit' 模式打开弹窗
+            openModal('edit', rowData);
+        }
+    });
+
+    // =========================================================================
+    // 【修改差异】：7. 点击“保存/更新”按钮，提交数据
+    // 增加了动态判断：如果 formMode 是 edit，就请求 update 接口；否则请求 add 接口
+    // =========================================================================
+    let saving = false; // 防重复提交锁
+    
+    saveBtn.addEventListener('click', async function() {
+        if (saving) return;
+
+        const code = codeEl.value.trim();
+        const name = nameEl.value.trim();
+        const branchType = typeEl.value;
         
-        // 这里通常是写 fetch POST 请求发给后端
-        console.log("准备提交的数据:", { branch_code: code, name: name });
-        
-        // 模拟保存成功后，关闭弹窗
-        alert("保存成功！(当前为模拟)");
-        bootstrap.Modal.getInstance(modalEl).hide();
-        
-        // 清理表单
+        // 校验必填项（Bootstrap 的红色边框效果）
+        codeEl.classList.toggle('is-invalid', !code);
+        nameEl.classList.toggle('is-invalid', !name);
+        typeEl.classList.toggle('is-invalid', !branchType);
+        if (!code || !name || !branchType) return;
+
+        // 按钮进入“加载中”状态
+        saving = true;
+        saveBtn.disabled = true;
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = '处理中...';
+
+        // 🚨 【核心差异】：判断当前是什么模式，决定请求后端的哪个 URL
+        const isEdit = formMode.value === 'edit';
+        const url = isEdit ? '/netpoint/netpointupdate' : '/netpoint/netpointadd';
+
+        try {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    branch_code: code,
+                    name: name,
+                    branch_type: parseInt(branchType),
+                    region: regionEl.value.trim(),
+                    address: addressEl.value.trim(),
+                    status: parseInt(statusEl.value),
+                    remark: remarkEl.value.trim()
+                })
+            });
+            
+            const data = await resp.json();
+            if (!resp.ok || data.code !== 0) throw new Error(data.msg || '操作失败');
+
+            // 成功逻辑
+            modal.hide();
+            formEl.reset();
+            alert(isEdit ? "更新成功！" : "保存成功！"); // 动态提示语
+            location.reload(); // 刷新页面重新获取数据
+        } catch (err) {
+            alert(err.message || '操作失败，请检查网络或后端');
+        } finally {
+            // 恢复按钮状态
+            saving = false;
+            saveBtn.disabled = false;
+            saveBtn.textContent = isEdit ? '更新' : '保存';
+        }
+    });
+
+    // =========================================================================
+    // 8. 监听弹窗关闭事件
+    // =========================================================================
+    modalEl.addEventListener('hidden.bs.modal', function() {
         formEl.reset();
+        allInputs.forEach(el => el.classList.remove('is-invalid'));
     });
 });
+
+    ///你并没有在 HTML 里手写 <input type="text" placeholder="搜索...">，这个搜索框是 DataTables 插件自动生成的
+    /// 2026.11.18 分页代码
+
+        // 🚨 新增：处理表格里的“删除”按钮
+    document.querySelector('#netTable tbody').addEventListener('click', function(e) {
+        // 判断点击的是不是删除按钮
+        if (e.target.classList.contains('btn-delete')) {
+            const branchCode = e.target.getAttribute('data-id');
+            
+            // 1. 弹出浏览器自带的确认框，防止误触
+            if (confirm(`确定要删除网点【${branchCode}】吗？删除后不可恢复！`)) {
+                const btn = e.target;
+                btn.disabled = true; // 防重复点击
+                btn.textContent = '删除中...';
+
+                // 2. 发送删除请求给后端
+                fetch('/netpoint/netpointdelete', {
+                    method: 'POST', // 删除通常也用 POST 或 DELETE
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ branch_code: branchCode })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.code === 0) {
+                        alert('删除成功！');
+                        location.reload(); // 刷新页面重新渲染数据
+                    } else {
+                        alert(data.msg || '删除失败');
+                        btn.disabled = false;
+                        btn.textContent = '删除';
+                    }
+                })
+                .catch(err => {
+                    alert('网络请求失败，请检查后端');
+                    btn.disabled = false;
+                    btn.textContent = '删除';
+                });
+            }
+        }
+    });
+
+   
+
+</script>
+  <!-- 导出功能代码块，放在主逻辑脚本之外 -->
+
+   
+    
+    <!-- 导出功能代码块 -->
+  
+    <!-- 导出功能代码块 -->
+
+   <script>
+document.addEventListener("DOMContentLoaded", function () {
+    const exportBtn = document.getElementById('exportExcelBtn');
+    if (!exportBtn) return;
+
+    exportBtn.addEventListener('click', function () {
+        // 1. 获取表格实例
+        let table = new DataTable('#netTable', {retrieve: true});
+        
+        // 2. 获取所有数据（不含操作列，假设最后一列是操作列，需要排除）
+        let data = table.rows().data().toArray();
+        
+        if (data.length === 0) {
+            alert("没有数据可以导出！");
+            return;
+        }
+
+        // 3. 获取表头
+        let header = [];
+        let columns = table.settings().init().columns || [];
+        columns.forEach(col => {
+            if (col.title) header.push(col.title);
+        });
+
+        // 4. 生成 CSV 格式内容
+        let csvContent = header.join(',') + '\n';
+        data.forEach(row => {
+            // 如果数据是对象，按 key 取值；如果是数组，直接拼接
+            let rowStr = '';
+            if (typeof row === 'object' && !Array.isArray(row)) {
+                // 针对对象类型，按表头取值
+                let temp = [];
+                Object.values(row).forEach(val => {
+                    // 处理包含逗号的内容，用双引号包裹
+                    if (val.toString().includes(',') || val.toString().includes('\n')) {
+                        temp.push('"' + val + '"');
+                    } else {
+                        temp.push(val);
+                    }
+                });
+                rowStr = temp.join(',');
+            } else {
+                // 针对数组类型
+                rowStr = Object.values(row).join(',');
+            }
+            csvContent += rowStr + '\n';
+        });
+
+        // 5. 触发下载 (添加 BOM 头解决 Excel 打开中文乱码)
+        let blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        let link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = '网点列表数据.csv';
+        link.click();
+        
+        // 清理内存
+        URL.revokeObjectURL(link.href);
+    });
+});
+
+
 </script>
 
 {% endblock %}

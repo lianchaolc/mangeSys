@@ -208,8 +208,9 @@ if __name__ == "__main__":
 
     # 启动内置开发服务器
     # debug=True：开发模式，代码改动自动重启、页面显示报错详情；线上一定要关掉debug
-    app.run(debug=True, use_reloader=False)
-  
+    app.run(debug=True)#use_reloader=False
+  #在 Flask 中，debug=True 代表开启调试模式，而 use_reloader=True（默认值）代表热重载：只要你一保存 Python 代码，Flask 就会自动重启服务器加载新代码。
+#你把它设置成了 False，意味着哪怕你把代码改得天花乱坠，只要你不手动关掉终端重启，它依然在跑最老的那份代码
     print("===== 所有注册路由 =====")
     for rule in app.url_map.iter_rules():
         print(rule.rule)
